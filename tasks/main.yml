@@ -1,2 +1,39 @@
 ---
-# tasks file for dx-streaming-upload
+# Install Dx-toolkit
+- name: Update apt
+  apt: upgrade=full
+
+- name: Add dx-toolkit ppa
+  apt_repository: repo="{{item}}"
+  with_items:
+  - "deb http://dnanexus-apt-prod.s3.amazonaws.com/ubuntu trusty/amd64/"
+  - "deb http://dnanexus-apt-prod.s3.amazonaws.com/ubuntu trusty/all/"
+
+- name: Load DNAnexus repo signing key
+  apt_key: url=https://wiki.dnanexus.com/images/files/ubuntu-signing-key.gpg
+
+- name: Install dx-toolkit
+  apt: pkg=dx-toolkit state=present
+
+- name: Check installed dx version
+  command: dx --version
+  register: dx_version
+
+- name: Print dx version
+  debug:
+    msg: "Dx-toolkit Version {{ dx_version.stdout }}"
+
+# Install Upload Agent
+- name: Download and unzip UA tarball
+  unarchive: src=https://wiki.dnanexus.com/images/files/dnanexus-upload-agent-1.5.11-linux.tar.gz dest=~/ copy=no
+
+- name: Check installed UA version
+  command: ua --version
+  environment:
+    PATH: ~/dnanexus-upload-agent-1.5.11-linux:{{ ansible_env.PATH }}
+  register: ua_version
+
+- name: Print installed UA version
+  debug:
+    msg: "Upload agent Version {{ ua_version.stdout }}"
+
