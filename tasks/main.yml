@@ -1,19 +1,26 @@
 ---
 # Install Dx-toolkit
-- name: Update apt
-  apt: upgrade=full
 
-- name: Add dx-toolkit ppa
-  apt_repository: repo="{{item}}"
-  with_items:
-  - "deb http://dnanexus-apt-prod.s3.amazonaws.com/ubuntu trusty/amd64/"
-  - "deb http://dnanexus-apt-prod.s3.amazonaws.com/ubuntu trusty/all/"
+# - name: Load DNAnexus repo signing key
+#   apt_key: url=https://wiki.dnanexus.com/images/files/ubuntu-signing-key.gpg
 
-- name: Load DNAnexus repo signing key
-  apt_key: url=https://wiki.dnanexus.com/images/files/ubuntu-signing-key.gpg
+# - name: Add dx-toolkit ppa
+#   apt_repository: repo="{{item}}"
+#   with_items:
+#   - "deb http://dnanexus-apt-prod.s3.amazonaws.com/ubuntu trusty/amd64/"
+#   - "deb http://dnanexus-apt-prod.s3.amazonaws.com/ubuntu trusty/all/"
 
-- name: Install dx-toolkit
-  apt: pkg=dx-toolkit state=present
+# - name: Update apt
+#   apt: update_cache=yes
+
+# - name: Install dx-toolkit
+#   apt: pkg=dx-toolkit state=present
+
+- name: Get DX tarball
+  unarchive: src=https://wiki.dnanexus.com/images/files/dx-toolkit-current-ubuntu-14.04-amd64.tar.gz dest=~/ copy=no
+
+- name: source Dx environment
+  command: source ~/dx-toolkit/environment
 
 - name: Check installed dx version
   command: dx --version
@@ -37,3 +44,5 @@
   debug:
     msg: "Upload agent Version {{ ua_version.stdout }}"
 
+# # Set up CRON job for monitoring
+# -
