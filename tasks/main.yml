@@ -40,16 +40,17 @@
 - name: Move ua executable to un-versioned folder location for ease of reference
   shell: mv /opt/dnanexus-upload-agent/*/* /opt/dnanexus-upload-agent/
 
-- name: Add ua path persistently to global variable
-  lineinfile:  >
-    dest=/etc/environment
-    state=present
-    backrefs=yes
-    regexp='PATH=(["]*)((?!.*?{{item}}).*?)(["]*)$'
-    line="PATH=\1\2:{{item}}\3"
+# Persistent change to environment: https://coderwall.com/p/ynvi0q/updating-path-with-ansible-system-wide
+# - name: Add ua path persistently to global variable
+#   lineinfile:  >
+#     dest=/etc/environment
+#     state=present
+#     backrefs=yes
+#     regexp='PATH=(["]*)((?!.*?{{item}}).*?)(["]*)$'
+#     line="PATH=\1\2:{{item}}\3"
 
-  with_items:
-  - opt/dnanexus-upload-agent
+#   with_items:
+#   - opt/dnanexus-upload-agent
 
 - name: Check installed UA version
   command: ua --version
@@ -63,7 +64,9 @@
 
 # Logging into DNAnexus account
 - name: Log in to DNAnexus account if token is provided
-  command: dx login {{ dx_token }}
+  command: source /opt/dx-toolkit/environment && dx login --token {{ dx_token }} --noprojects
+  args:
+    executable: /bin/bash
   when: dx_token is defined
 
 # Copy the necessary files for RUN directory monitoring

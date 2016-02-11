@@ -20,9 +20,13 @@ install:
   - printf '[defaults]\nroles_path= ../' > ansible.cfg
 
 script:
+  - pwd
+  - whoami
+  # Travis CI for Ansible: http://www.jeffgeerling.com/blog/testing-ansible-roles-travis-ci-github
   # Basic role syntax check
   - ansible-playbook tests/test.yml -i tests/inventory --syntax-check
-  - ansible-playbook tests/test.yml -i tests/inventory --connection=local --sudo -vvvv
+  # Basic role test on localhost using debug mode
+  - ansible-playbook tests/test.yml -i tests/inventory --connection=local --sudo -vvvv --extra-vars "dx_token=$DX_AUTH_TOKEN mode=debug upload_project=project-BpyQyjj0Y7V0Gbg7g52Pqf8q monitored_dir=~/runs"
 
 env:
   global:

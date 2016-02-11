@@ -2,4 +2,4 @@
 - hosts: localhost
   remote_user: root
   roles:
-    - dx-streaming-upload
+    - {role: dx-streaming-upload, mode: debug}
