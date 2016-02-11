@@ -1,0 +1,11 @@
+# Local directory for log file
+# Corresponds to -L parameter in incremental upload
+log_dir: '~/dnanexus/upload/LOGS'
+
+# Local directory for temp files
+# Corresponds to -t parameter in incremental upload
+tmp_dir: '~/dnanexus/upload/TMP'
+
+# Number of times to retry dx_sync_directory before quitting
+# default = 3; corresponds to -R parameter in incremental upload
+n_retries: 3
