@@ -24,5 +24,11 @@ script:
   - ansible-playbook tests/test.yml -i tests/inventory --syntax-check
   - ansible-playbook tests/test.yml -i tests/inventory --connection=local --sudo -vvvv
 
+env:
+  global:
+    # DNAnexus Auth Token with Contribute privilege to Ansible CI project
+    # set to the environment variable DX_AUTH_TOKEN
+    secure: "h9ualvIrdYbYR/mzqAi+T9HxIOT0S0FUOqt/j8Qn8YgSbnDQp+28Ise3KoonWIQQTcivz9EHkgovp0tpazaowe/7fdwNDho0A+DeW2zNaawckMeqj7QbjQh0BdVNDkx4d2D7/fZeQhGwbhUy7osk5PeGKB4ScGNrOBpH2EizfT3KpZtk3Tqsn92HmP1UIvJ9FHsau2LTS6q+H3MtIqZ7ENn5kiSSXNWAmu3SeGuBY+8tMNWLQZls2G8ZXM4tChxKAJBnvgJ+ICU/CE5Env4qCiJzoCWrWsLCNilSiBMnpLK/uhEYjLXox/SIZeSjwD6wtmtLPa8SYst9qDYNy/ICitFq3rGCIXlnseS8t0c+LmTgU7amkr2EF877v8rPfbwAbuUk1GtqfLQVRKMfoMw4cO2IOIxMhNbYtslfTNUjUNUUDdIyFSqy5Tln0iwbBOt/ci8RhD8ilgGMgtzqiSdF7Q9heFBKkB7hgn1hSycdp3SG/DS6Onc9Z28RpnjmoJHhSv47CrUUD6DEpvjf/pxMoI7lSeDoZYfyYK08Ox9RN5hR1JtCeb3yVZBzDMQqHX6NpvuLqCqc/PhjlXo+qRfei+bTEAqGqv++isy7tm50kXGomZCeSeh+hC8bjvjzMNYVr/sCjuB3yNCJEL9mBoWO5kKtrDKbq3wd6mVikxs6PSk="
+
 # notifications:
 #   webhooks: https://galaxy.ansible.com/api/v1/notifications/
