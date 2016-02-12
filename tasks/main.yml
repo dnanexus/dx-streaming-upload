@@ -96,16 +96,16 @@
 # Set up CRON job for monitoring
 - name: set up CRON job to run every minute in debug mode
   cron: >
-    name="DNAnexus monitor runs"
+    name="DNAnexus monitor runs (debug)"
     job="flock -n ~/dnanexus/cron.lock bash -ex -c 'source ~/dx-toolkit/environment; PATH=$PATH:~/dnanexus-upload-agent; python ~/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ monitored_dir }} -v > ~/monitor.log 2>&1' > ~/dx-stream_cron.log 2>&1"
     user="{{ ansible_ssh_user }}"
   when: mode == "debug"
 
 - name: set up CRON job to run every hour in deploy mode
   cron: >
-    name="DNAnexus monitor runs"
+    name="DNAnexus monitor runs (deploy)"
     special_time=hourly
     user="{{ ansible_ssh_user }}"
-    job="flock -n ~/dnanexus/cron.lock -c 'python ~/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ monitored_dir }} -v > ~/dnanexus/upload/monitor.log 2>&1'"
+    job="flock -n ~/dnanexus/cron.lock bash -ex -c 'source ~/dx-toolkit/environment; PATH=$PATH:~/dnanexus-upload-agent; python ~/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ monitored_dir }} -v > ~/monitor.log 2>&1' > ~/dx-stream_cron.log 2>&1"
   when: mode == "deploy"
 

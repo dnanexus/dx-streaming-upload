@@ -25,8 +25,8 @@ script:
   # Travis CI for Ansible: http://www.jeffgeerling.com/blog/testing-ansible-roles-travis-ci-github
   # Basic role syntax check
   - ansible-playbook tests/test.yml -i tests/inventory --syntax-check
-  # Basic role test on localhost using debug mode
-  - ansible-playbook tests/test.yml -i tests/inventory --connection=local --sudo -vvvv --extra-vars "dx_token=$DX_AUTH_TOKEN"
+  # Basic role test on localhost using debug mode and a non-root user
+  - ansible-playbook tests/test.yml -i tests/inventory --connection=local --become-user travis -vvvv --extra-vars "dx_token=$DX_AUTH_TOKEN"
 
 env:
   global:
