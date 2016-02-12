@@ -1,5 +1,8 @@
 ---
 - hosts: localhost
-  remote_user: root
+  remote_user: travis
   roles:
-    - {role: dx-streaming-upload, mode: debug}
+    - {role: dx-streaming-upload,
+       mode: debug,
+       upload_project: project-BpyQyjj0Y7V0Gbg7g52Pqf8q,
+       monitored_dir: ~/runs}

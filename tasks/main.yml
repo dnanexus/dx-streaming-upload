@@ -17,11 +17,11 @@
 #   apt: pkg=dx-toolkit state=present
 
 - name: Get DX tarball
-  unarchive: src=https://wiki.dnanexus.com/images/files/dx-toolkit-current-ubuntu-14.04-amd64.tar.gz dest=/opt copy=no
+  unarchive: src=https://wiki.dnanexus.com/images/files/dx-toolkit-current-ubuntu-14.04-amd64.tar.gz dest=~ copy=no
 
 # http://stackoverflow.com/questions/22256884/not-possible-to-source-bashrc-with-ansible
 - name: check dx version
-  shell: source /opt/dx-toolkit/environment  && dx --version
+  shell: source ~/dx-toolkit/environment  && dx --version
   args:
     executable: /bin/bash
   register: dx_version
@@ -32,13 +32,13 @@
 
 # Install Upload Agent
 - name: Create folder to house upload agent
-  file: path=/opt/dnanexus-upload-agent state=directory mode=0755
+  file: path=~/dnanexus-upload-agent state=directory mode=0755
 
 - name: Download and unzip UA tarball
-  unarchive: src=https://wiki.dnanexus.com/images/files/dnanexus-upload-agent-current-linux.tar.gz dest=/opt/dnanexus-upload-agent copy=no
+  unarchive: src=https://wiki.dnanexus.com/images/files/dnanexus-upload-agent-current-linux.tar.gz dest=~/dnanexus-upload-agent copy=no
 
 - name: Move ua executable to un-versioned folder location for ease of reference
-  shell: mv /opt/dnanexus-upload-agent/*/* /opt/dnanexus-upload-agent/
+  shell: mv ~/dnanexus-upload-agent/*/* ~/dnanexus-upload-agent/
 
 # Persistent change to environment: https://coderwall.com/p/ynvi0q/updating-path-with-ansible-system-wide
 # - name: Add ua path persistently to global variable
@@ -55,7 +55,7 @@
 - name: Check installed UA version
   command: ua --version
   environment:
-    PATH: /opt/dnanexus-upload-agent:{{ ansible_env.PATH }}
+    PATH: ~/dnanexus-upload-agent:{{ ansible_env.PATH }}
   register: ua_version
 
 - name: Print installed UA version
@@ -64,26 +64,26 @@
 
 # Logging into DNAnexus account
 - name: Log in to DNAnexus account if token is provided
-  command: source /opt/dx-toolkit/environment && dx login --token {{ dx_token }} --noprojects
+  command: source ~/dx-toolkit/environment && dx login --token {{ dx_token }} --noprojects
   args:
     executable: /bin/bash
   when: dx_token is defined
 
 # Copy the necessary files for RUN directory monitoring
 - name: Create the script directory for housing scripts
-  file: path=/opt/dnanexus/scripts state=directory mode=0755
+  file: path=~/dnanexus/scripts state=directory mode=0755
 
 - name: Create the config directory for housing config files
-  file: path=/opt/dnanexus/config state=directory mode=0755
+  file: path=~/dnanexus/config state=directory mode=0755
 
 - name: Copy necessary scripts
-  copy: src=../files/ dest=/opt/dnanexus/scripts
+  copy: src=../files/ dest=~/dnanexus/scripts
 
 - name: Copy necessary config
-  copy: src=../templates/monitor_run_config.template dest=/opt/dnanexus/config/monitor_runs.config
+  copy: src=../templates/monitor_run_config.template dest=~/dnanexus/config/monitor_runs.config
 
 - name: Create lock file for CRON to wait on using flock
-  file: path=/opt/dnanexus/cron.lock state=touch
+  file: path=~/dnanexus/cron.lock state=touch
 
 - name: fail when project is not defined
   fail: msg="Project to upload to was not defined"
@@ -97,12 +97,15 @@
 - name: set up CRON job to run every minute in debug mode
   cron: >
     name="DNAnexus monitor runs"
-    job="flock -n /opt/dnanexus/cron.lock -c python /opt/dnanexus/scripts/monitor_runs.py -c /opt/dnanexus/config/monitor_runs.config -p '{{ upload_project }}' -d '{{ monitored_dir }}'"
+    job="flock -n ~/dnanexus/cron.lock bash -ex -c 'source ~/dx-toolkit/environment; PATH=$PATH:~/dnanexus-upload-agent; python ~/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ monitored_dir }} -v > ~/monitor.log 2>&1' > ~/dx-stream_cron.log 2>&1"
+    user="{{ ansible_ssh_user }}"
   when: mode == "debug"
 
 - name: set up CRON job to run every hour in deploy mode
   cron: >
     name="DNAnexus monitor runs"
-    job="flock -n /opt/dnanexus/cron.lock -c python /opt/dnanexus/scripts/monitor_runs.py -c /opt/dnanexus/config/monitor_runs.config -p '{{ upload_project }}' -d '{{ monitored_dir }}'"
+    special_time=hourly
+    user="{{ ansible_ssh_user }}"
+    job="flock -n ~/dnanexus/cron.lock -c 'python ~/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ monitored_dir }} -v > ~/dnanexus/upload/monitor.log 2>&1'"
   when: mode == "deploy"
 

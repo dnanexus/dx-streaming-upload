@@ -26,7 +26,7 @@ script:
   # Basic role syntax check
   - ansible-playbook tests/test.yml -i tests/inventory --syntax-check
   # Basic role test on localhost using debug mode
-  - ansible-playbook tests/test.yml -i tests/inventory --connection=local --sudo -vvvv --extra-vars "dx_token=$DX_AUTH_TOKEN mode=debug upload_project=project-BpyQyjj0Y7V0Gbg7g52Pqf8q monitored_dir=~/runs"
+  - ansible-playbook tests/test.yml -i tests/inventory --connection=local --sudo -vvvv --extra-vars "dx_token=$DX_AUTH_TOKEN"
 
 env:
   global:
