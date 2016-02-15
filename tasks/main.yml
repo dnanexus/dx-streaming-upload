@@ -40,6 +40,14 @@
 - name: Move ua executable to un-versioned folder location for ease of reference
   shell: mv ~/dnanexus-upload-agent/*/* ~/dnanexus-upload-agent/
 
+- name: check ua folder content
+  shell: ls ~/dnanexus-upload-agent/
+  register: ua_folder_content
+
+- name: print ua folder content
+  debug:
+    msg: "Upload agent folder contains: {{ ua_folder_content.stdout }}"
+
 # Persistent change to environment: https://coderwall.com/p/ynvi0q/updating-path-with-ansible-system-wide
 # - name: Add ua path persistently to global variable
 #   lineinfile:  >
@@ -55,7 +63,7 @@
 - name: Check installed UA version
   command: ua --version
   environment:
-    PATH: ~/dnanexus-upload-agent:{{ ansible_env.PATH }}
+    PATH: "{{ ansible_env.HOME }}/dnanexus-upload-agent:{{ ansible_env.PATH }}"
   register: ua_version
 
 - name: Print installed UA version
