@@ -10,25 +10,32 @@ Users of this module needs a DNAnexus account and its accompanying authenticatio
 
 Role Variables
 --------------
-
-To be determined.
+- `mode`: `{deploy, debug}` In the *deploy* mode, monitoring cron job is triggered every minute; in *deploy mode*, monitoring cron job is triggered every hour.
+- `monitored_dir`: Path to the local directory that should be monitored for RUN folders. Suppose that the folder `20160101_M000001_0001_000000000-ABCDE` is the RUN directory, then the folder structure assumed is `{{monitored_dir}}/20160101_M000001_0001_000000000-ABCDE`
+- `upload_project`: ID of the DNAnexus project that the RUN folders should be uploaded to. The ID is of the form `project-BpyQyjj0Y7V0Gbg7g52Pqf8q` 
+- `dx_token`: API token for the DNAnexus user to be used for data upload. The API token should give minimally CONTRIBUTE access to the `{{ upload project }}`.
 
 Dependencies
 ------------
 
-To be determined.
+Python 2.7 is needed. This program is not compatible with Python 3.X.
+
+Minimal Ansible version: 2.0.
+
+This program is intended for Ubuntu 14.04 (Trusty) and has been tested on the 15.10 (Wily) release. Most features should work on a Ubuntu 12.04 (Precise) system, but this has not been tested to date.
+
 
 Example Playbook
 ----------------
 
-To be determined.
+To be added.
 
 License
 -------
 
-To be determined.
+Apache
 
 Author Information
 ------------------
 
-DNAnexus
+DNAnexus (email: info@dnanexus.com)
