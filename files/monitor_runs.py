@@ -59,6 +59,13 @@ def parse_args():
                         help='Print verbose debugging messages',
                         action='store_true')
 
+    optionalNamed = parser.add_argument_group("Optional named arguemnts")
+
+    optionalNamed.add_argument('--applet', '-A',
+                        help='ID of DNAnexus app(let) to execute after successful ' +
+                             'upload of the RUN folder, see incremental_upload.py',
+                        required=False)
+
     args = parser.parse_args()
     # Canonize file paths
     args.directory = os.path.abspath(args.directory)
@@ -80,8 +87,10 @@ def get_dx_auth_token():
             using an API token!\n{0}: {1}".format(e.errno, e.strerror))
 
 
-def get_streaming_config(config_file, project, token):
+def get_streaming_config(config_file, project, applet, token):
     config = {"project": project, "token": token}
+    if applet:
+        config["applet"] = applet
     user_config_dict = yaml.load(config_file)
     for key, default in CONFIG_DEFAULT.items():
         config[key] = user_config_dict.get(key, default)
@@ -168,9 +177,11 @@ def local_upload_has_lapsed(folder, config):
         # Could not find a local log file for the run-folder for which the upload has been initiated
         # The log file could have been moved or deleted. Treat this as an lapsed upload
         if DEBUG:
-            print "==INFO== Local log file could not be found for {run} at {folder}".format(run=folder,
-                                                                                             folder='{0}/{1}'.format(config['log_dir'], folder))
-            print "==INFO== Treating run {0} as a lapsed local upload, and will reinitiate streaming upload".format(folder)
+            print "==INFO== Local log file could not be found for \
+                   {run} at {folder}".format(run=folder,
+                                             folder='{0}/{1}'.format(config['log_dir'], folder))
+            print "==INFO== Treating run {0} as a lapsed local upload, \
+                   and will reinitiate streaming upload".format(folder)
 
         return True
 
@@ -181,7 +192,8 @@ def local_upload_has_lapsed(folder, config):
 
         if DEBUG:
             print "==INFO== Found {n} log files for run {run} in folder {folder}. \
-                   Using the latest log. The log files are {files}.".format(n=len(local_log_files), run=folder,
+                   Using the latest log. The log files are {files}.".format(n=len(local_log_files),
+                                                                            run=folder,
                                                                             folder='{0}/{1}'.format(config['log_dir'], folder),
                                                                             files=local_log_files)
     # Get most recently modified file's mod time
@@ -189,8 +201,6 @@ def local_upload_has_lapsed(folder, config):
     elapsed_time = time.time() - mod_time
 
     return ((elapsed_time / config['min_interval']) > N_INTERVALS_TO_WAIT)
-
-
 
 def check_complete_sync(synced_folders, config):
     incomplete_syncs = []
@@ -222,6 +232,9 @@ def _trigger_streaming_upload(folder, config):
                "-z", config['min_size'],
                "-i", config['min_interval'],
                "-R", config['n_retries']]
+    if 'applet' in config:
+        command += ["-A", config['applet']]
+
     # Ensure all numerical values are formatted as string
     command = [str(word) for word in command]
 
@@ -259,7 +272,7 @@ def main():
     run_folders = get_run_folders(args.directory)
     if DEBUG: print "==DEBUG== Got RUN folders: ", run_folders
 
-    streaming_config = get_streaming_config(args.config, args.project, token)
+    streaming_config = get_streaming_config(args.config, args.project, args.applet, token)
     if DEBUG: print "==DEBUG== Got config: ", streaming_config
 
     streaming_config = check_config_fields(streaming_config)

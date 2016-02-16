@@ -49,7 +49,8 @@ def parse_args():
     # Optional inputs
     parser.add_argument("-l", "--num-lanes", metavar="<2 or 8>", type=int,
             choices=[2, 8], help="Upload BCL files sorted by lane. Use this " +
-            "option if you plan to run BCL conversion parallelized by lane.")
+            "option if you plan to run BCL conversion parallelized by lane. " +
+            "Not applicable to single lane machines.")
     parser.add_argument("-m", "--min-age", metavar="<seconds>", type=int,
             default=1000, help="Minimum age (in seconds) of files to be " +
             "tarred and uploaded.")
@@ -68,6 +69,11 @@ def parse_args():
     parser.add_argument("-R", "--retries", metavar="<int>", type=int, default=3,
             help="Number of times the script will attempt to tar and upload " +
             "a set of files before failing.")
+    parser.add_argument("-A", "--applet", metavar="<applet-id>",
+            help="DNAnexus applet id to execute after the RUN folder has been " +
+            "successfully uploaded (e.g. for demultiplexing). A single input, " +
+            "-i upload_sentinel_record will be passed to the applet, with the " +
+            "appropriate sentinel record id for the uploaded run folder.")
 
     # Mutually exclusive inputs
     upload_debug_group = parser.add_mutually_exclusive_group(required=False)
@@ -109,6 +115,15 @@ def check_input(args):
     except dxpy.exceptions.DXError as e:
         raise_error("Error getting project handler for project (%s). %s" %
                 (args.project, e))
+
+    # Check that chained downstream applet is valid
+    if args.applet:
+        try:
+            dxpy.get_handler(args.applet).describe()
+        except dxpy.exceptions.DXAPIError as e:
+            raise_error("Unable to resolve applet %s. %s" %(args.applet, e))
+        except dxpy.exceptions.DXError as e:
+            raise_error("Error getting handler for applet (%s). %s" %(args.applet, e))
 
     if not args.dxpy_upload:
         print_stderr("Checking if ua is in $PATH")
@@ -244,7 +259,7 @@ def main():
         except dxpy.exceptions.DXSearchError as e:
             raise_error("Encountered an error looking for %s at %s:%s. %s"
                     % (lane["record_name"], lane["remote_folder"],
-                        args.project_id, e))
+                        args.project, e))
 
         if old_record:
             lane["dxrecord"] = dxpy.get_handler(
@@ -312,6 +327,37 @@ def main():
         record.close()
 
     print_stderr("Run %s successfully streamed!" % (run_id))
+
+    REMOTE_READS_FOLDER = "/data/reads"
+    if args.applet:
+        # project verified in check_input, assuming no change
+        project = dxpy.get_handler(args.project)
+        reads_folder = REMOTE_READS_FOLDER + "/" + run_id
+
+        print_stderr("Initiating downstream analysis: given app(let) id %s" %args.applet)
+
+        for info in lane_info:
+            lane = info["lane"]
+            record = info["dxrecord"]
+
+            # applet verified in check_input, assume no change
+            applet = dxpy.get_handler(args.applet)
+
+            # Prepare output folder, if downstream analysis specified
+            output_folder = "{folder}/{lane}".format(folder=reads_folder, lane=lane)
+
+            print_stderr("Creating output folder %s" %(output_folder))
+
+            try:
+                project.new_folder(output_folder, parents=True)
+            except dxpy.DXError as e:
+                raise_error("Failed to create new folder %s. %s" %(output_folder, e))
+
+            # Run specified applet
+            job = applet.run({"upload_sentinel_record": dxpy.dxlink(record)},
+                        folder=output_folder, project=args.project)
+
+            print_stderr("Initiated job %s from applet %s" %(job, args.applet))
 
 if __name__ == "__main__":
     main()
