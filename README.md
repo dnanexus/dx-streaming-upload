@@ -10,10 +10,15 @@ Instruments that this module support include the Illumina MiSeq, NextSeq, HiSeq-
 Role Variables
 --------------
 - `mode`: `{deploy, debug}` In the *deploy* mode, monitoring cron job is triggered every minute; in *deploy mode*, monitoring cron job is triggered every hour.
-- `monitored_dir`: Path to the local directory that should be monitored for RUN folders. Suppose that the folder `20160101_M000001_0001_000000000-ABCDE` is the RUN directory, then the folder structure assumed is `{{monitored_dir}}/20160101_M000001_0001_000000000-ABCDE`
 - `upload_project`: ID of the DNAnexus project that the RUN folders should be uploaded to. The ID is of the form `project-BpyQyjj0Y7V0Gbg7g52Pqf8q`
-- `dx_token`: API token for the DNAnexus user to be used for data upload. The API token should give minimally UPLOAD access to the `{{ upload project }}`, or CONTRIBUTE access if `downstream_applet` is specified. Instructions for generating a API token can be found at [DNAnexus wiki](https://wiki.dnanexus.com/UI/API-Tokens).
-- `downstream_applet`: (Optional) ID of a DNAnexus applet to be triggered after successful upload of the RUN directory. This applet's I/O contract should accept a DNAnexus record with the input name `upload_sentinel_record` as the input name. This applet will be triggered with only the `upload_sentinel_record` input. Future work will allow command line customization of other input parameters.
+- `dx_token`: API token for the DNAnexus user to be used for data upload. The API token should give minimally UPLOAD access to the `{{ upload project }}`, or CONTRIBUTE access if `downstream_applet` is specified. Instructions for generating a API token can be found at [DNAnexus wiki](https://wiki.dnanexus.com/UI/API-Tokens). This value is overriden by `dx_user_token` in `monitored_users`.
+- `monitored_users`: This is a list of objects, each representing a remote user, with its set of incremental upload parameters. For each `monitored_user`, the following values are accepted
+  - `username`: (Required) username of the remote user 
+  - `monitored_directories`: (Required)  Path to the local directory that should be monitored for RUN folders. Multiple directories can be listed. Suppose that the folder `20160101_M000001_0001_000000000-ABCDE` is the RUN directory, then the folder structure assumed is `{{monitored_dir}}/20160101_M000001_0001_000000000-ABCDE`
+  - `applet`: (Optional) ID of a DNAnexus applet to be triggered after successful upload of the RUN directory. This applet's I/O contract should accept a DNAnexus record with the input name `upload_sentinel_record` as the input name. This applet will be triggered with only the `upload_sentinel_record` input. Future work will allow command line customization of other input parameters.
+  - `dx_user_token`: API token associated with the specific `monitored_user`. This overrides the value `dx_token`. If `dx_user_token` is not specified, defaults to `dx_token`. 
+
+**Note** DNAnexus login is persistent and the login environment is stored on disk in the the Ansible user's home directory. User of this playbook responsibility to make sure that every Ansible user (`monitored_user`) with a streaming upload job assigned has been logged into DNAnexus by either specifying a `dx_token` or `dx_user_token` at least once.
 
 Dependencies
 ------------
@@ -36,19 +41,26 @@ Example Playbook
 ----------------
 `dx-upload-play.yml`
 ```YAML
-- hosts: nodes
-- remote_user: illumina
+---
+- hosts: localhost
+  vars:
+    monitored_users:
+      - username: travis
+        applet: applet-Bq2Kkgj08FqbjV3J8xJ0K3gG
+        monitored_directories: 
+          - ~/runs
+      - username: root
+        monitored_directories:
+          - ~/home/root/runs
+    mode: debug
+    upload_project: project-BpyQyjj0Y7V0Gbg7g52Pqf8q
 
-- roles:
-    - {role: dx-streaming-upload,
-       mode: deploy,
-       upload_project: project-BpyQyjj0Y7V0Gbg7g52Pqf8q,
-       monitored_dir: ~/runs,
-       downstream_applet: applet-BpbqV6Q08FqYkQ7F21bxK17Q}
+  roles:
+    - dx-streaming-upload
 
 ```
 
-**Note**: For security reasons, you may not want to store the DNAnexus authentication token in a playbook that is open-access. One might trigger the playbook on the command line with extra-vars to supply the necessary authentication token.
+**Note**: For security reasons, you should refrain from storing the DNAnexus authentication token in a playbook that is open-access. One might trigger the playbook on the command line with extra-vars to supply the necessary authentication token, or store them in a closed-source yaml variable file.
 
 ie. `ansible-playbook dx-upload-play.yml -i inventory --extra-vars "dx_token=<SECRET_TOKEN>"`
 
