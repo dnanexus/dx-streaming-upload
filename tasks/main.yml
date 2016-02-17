@@ -1,21 +1,5 @@
 ---
 # Install Dx-toolkit
-
-# - name: Load DNAnexus repo signing key
-#   apt_key: url=https://wiki.dnanexus.com/images/files/ubuntu-signing-key.gpg
-
-# - name: Add dx-toolkit ppa
-#   apt_repository: repo="{{item}}"
-#   with_items:
-#   - "deb http://dnanexus-apt-prod.s3.amazonaws.com/ubuntu trusty/amd64/"
-#   - "deb http://dnanexus-apt-prod.s3.amazonaws.com/ubuntu trusty/all/"
-
-# - name: Update apt
-#   apt: update_cache=yes
-
-# - name: Install dx-toolkit
-#   apt: pkg=dx-toolkit state=present
-
 - name: Get DX tarball
   unarchive: src=https://wiki.dnanexus.com/images/files/dx-toolkit-current-ubuntu-14.04-amd64.tar.gz dest=~ copy=no
 
@@ -48,18 +32,6 @@
   debug:
     msg: "Upload agent folder contains: {{ ua_folder_content.stdout }}"
 
-# Persistent change to environment: https://coderwall.com/p/ynvi0q/updating-path-with-ansible-system-wide
-# - name: Add ua path persistently to global variable
-#   lineinfile:  >
-#     dest=/etc/environment
-#     state=present
-#     backrefs=yes
-#     regexp='PATH=(["]*)((?!.*?{{item}}).*?)(["]*)$'
-#     line="PATH=\1\2:{{item}}\3"
-
-#   with_items:
-#   - opt/dnanexus-upload-agent
-
 - name: Check installed UA version
   command: ua --version
   environment:
@@ -71,11 +43,14 @@
     msg: "Upload agent Version {{ ua_version.stdout }}"
 
 # Logging into DNAnexus account
-- name: Log in to DNAnexus account if token is provided
-  command: source ~/dx-toolkit/environment && dx login --token {{ dx_token }} --noprojects
+- name: Log in to DNAnexus account if dx_user_token is provided
+  command: source ~/dx-toolkit/environment && dx login --token {{ item.dx_user_token if 'dx_user_token' in item else dx_token }} --noprojects
+  become: yes
+  become_user: "{{ item.username }}"
   args:
     executable: /bin/bash
-  when: dx_token is defined
+  with_items: "{{ monitored_users }}"
+  when: (dx_token is defined) or (item.dx_user_token is defined)
 
 # Copy the necessary files for RUN directory monitoring
 - name: Create the script directory for housing scripts
@@ -99,21 +74,31 @@
 
 - name: fail when local folder to monitor (for RUN dirs) is not defined
   fail: msg="Local dir to monitor (for RUN dirs) is not defined"
-  when: monitored_dir is not defined
+  with_items: "{{ monitored_users }}"
+  when: item.monitored_directories is not defined
 
 # Set up CRON job for monitoring
 - name: set up CRON job to run every minute in debug mode
   cron: >
-    name="DNAnexus monitor runs (debug)"
-    job="flock -n ~/dnanexus/cron.lock bash -ex -c 'source ~/dx-toolkit/environment; PATH=$PATH:~/dnanexus-upload-agent; python ~/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ monitored_dir }} -v > ~/monitor.log 2>&1' > ~/dx-stream_cron.log 2>&1"
-    user="{{ ansible_ssh_user }}"
+    name="DNAnexus monitor runs (deploy)"
+    user="{{ item.0.username }}"
+    job="flock -n ~/dnanexus/cron.lock bash -ex -c 'source ~/dx-toolkit/environment; PATH=$PATH:~/dnanexus-upload-agent; python ~/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ item.1 }} -v > ~/monitor.log 2>&1' > ~/dx-stream_cron.log 2>&1"
+  with_subelements:
+        - monitored_users
+        - monitored_directories
+  become: yes
+  become_user: "{{ item.0.username }}"
   when: mode == "debug"
 
 - name: set up CRON job to run every hour in deploy mode
   cron: >
     name="DNAnexus monitor runs (deploy)"
     special_time=hourly
-    user="{{ ansible_ssh_user }}"
-    job="flock -n ~/dnanexus/cron.lock bash -ex -c 'source ~/dx-toolkit/environment; PATH=$PATH:~/dnanexus-upload-agent; python ~/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ monitored_dir }} -v > ~/monitor.log 2>&1' > ~/dx-stream_cron.log 2>&1"
+    user="{{ item.0.username }}"
+    job="flock -n ~/dnanexus/cron.lock bash -ex -c 'source ~/dx-toolkit/environment; PATH=$PATH:~/dnanexus-upload-agent; python ~/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ item.1 }} -v > ~/monitor.log 2>&1' > ~/dx-stream_cron.log 2>&1"
+  with_subelements:
+        - monitored_users
+        - monitored_directories
+  become: yes
+  become_user: "{{ item.0.username }}"
   when: mode == "deploy"
-

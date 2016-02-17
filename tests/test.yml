@@ -1,7 +1,15 @@
 ---
 - hosts: localhost
+  vars:
+    monitored_users:
+      - username: travis
+        monitored_directories: 
+          - ~/runs
+      - username: root
+        monitored_directories:
+          - ~/home/root/runs
+    mode: debug
+    upload_project: project-BpyQyjj0Y7V0Gbg7g52Pqf8q
+
   roles:
-    - {role: dx-streaming-upload,
-       mode: debug,
-       upload_project: project-BpyQyjj0Y7V0Gbg7g52Pqf8q,
-       monitored_dir: ~/runs}
+    - dx-streaming-upload
