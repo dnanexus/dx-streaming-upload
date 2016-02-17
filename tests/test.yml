@@ -3,6 +3,7 @@
   vars:
     monitored_users:
       - username: travis
+        applet: applet-Bq2Kkgj08FqbjV3J8xJ0K3gG
         monitored_directories: 
           - ~/runs
       - username: root

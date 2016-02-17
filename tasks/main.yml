@@ -44,7 +44,7 @@
 
 # Logging into DNAnexus account
 - name: Log in to DNAnexus account if dx_user_token is provided
-  command: source /opt/dx-toolkit/environment && dx login --token {{ item.dx_user_token if 'dx_user_token' in item else dx_token }} --noprojects
+  shell: source /opt/dx-toolkit/environment && dx login --token {{ item.dx_user_token if 'dx_user_token' in item else dx_token }} --noprojects
   become: yes
   become_user: "{{ item.username }}"
   args:
@@ -78,27 +78,52 @@
   when: item.monitored_directories is not defined
 
 # Set up CRON job for monitoring
-- name: set up CRON job to run every minute in debug mode
+- name: set up CRON job to run every minute in debug mode with downstream applet
   cron: >
     name="DNAnexus monitor runs (debug)"
     user="{{ item.0.username }}"
-    job="flock -n /var/lock/dnanexus_uploader.lock bash -ex -c 'source /opt/dx-toolkit/environment; PATH=/opt/dnanexus-upload-agent:$PATH; python /opt/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ item.1 }} -v > ~/monitor.log 2>&1' > ~/dx-stream_cron.log 2>&1"
+    job="flock -w 5 /var/lock/dnanexus_uploader.lock bash -ex -c 'source /opt/dx-toolkit/environment; PATH=/opt/dnanexus-upload-agent:$PATH; python /opt/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ item.1 }} -v -A {{ item.0.applet }} > ~/monitor.log 2>&1' > ~/dx-stream_cron.log 2>&1"
   with_subelements:
         - monitored_users
         - monitored_directories
   become: yes
   become_user: "{{ item.0.username }}"
-  when: mode == "debug"
+  when: (mode == "debug") and (item.0.applet is defined)
 
-- name: set up CRON job to run every hour in deploy mode
+- name: set up CRON job to run every minute in debug mode without downstream applet (when not specified)
+  cron: >
+    name="DNAnexus monitor runs (debug)"
+    user="{{ item.0.username }}"
+    job="flock -w 5 /var/lock/dnanexus_uploader.lock bash -ex -c 'source /opt/dx-toolkit/environment; PATH=/opt/dnanexus-upload-agent:$PATH; python /opt/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ item.1 }} -v > ~/monitor.log 2>&1' > ~/dx-stream_cron.log 2>&1"
+  with_subelements:
+        - monitored_users
+        - monitored_directories
+  become: yes
+  become_user: "{{ item.0.username }}"
+  when: (mode == "debug") and (item.0.applet is not defined)
+
+- name: set up CRON job to run every hour in deploy mode with downstream applet
   cron: >
     name="DNAnexus monitor runs (deploy)"
     special_time=hourly
     user="{{ item.0.username }}"
-    job="flock -n /var/lock/dnanexus_uploader.lock bash -ex -c 'source /opt/dx-toolkit/environment; PATH=/opt/dnanexus-upload-agent:$PATH; python /opt/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ item.1 }} -v > ~/monitor.log 2>&1' > ~/dx-stream_cron.log 2>&1"
+    job="flock -w 5 /var/lock/dnanexus_uploader.lock bash -ex -c 'source /opt/dx-toolkit/environment; PATH=/opt/dnanexus-upload-agent:$PATH; python /opt/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ item.1 }} -v -A {{ item.0.applet }} > ~/monitor.log 2>&1' > ~/dx-stream_cron.log 2>&1"
   with_subelements:
         - monitored_users
         - monitored_directories
   become: yes
   become_user: "{{ item.0.username }}"
-  when: mode == "deploy"
+  when: (mode == "deploy") and (item.0.applet is defined)
+
+- name: set up CRON job to run every hour in deploy mode without downstream applet (when not specified)
+  cron: >
+    name="DNAnexus monitor runs (deploy)"
+    special_time=hourly
+    user="{{ item.0.username }}"
+    job="flock -w 5 /var/lock/dnanexus_uploader.lock bash -ex -c 'source /opt/dx-toolkit/environment; PATH=/opt/dnanexus-upload-agent:$PATH; python /opt/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ item.1 }} -v > ~/monitor.log 2>&1' > ~/dx-stream_cron.log 2>&1"
+  with_subelements:
+        - monitored_users
+        - monitored_directories
+  become: yes
+  become_user: "{{ item.0.username }}"
+  when: (mode == "deploy") and (item.0.applet is not defined)
