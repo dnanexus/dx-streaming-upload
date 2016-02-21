@@ -157,6 +157,12 @@ def get_run_id(run_dir):
     except:
         raise_error("Could not extract run id from RunInfo.xml")
 
+def get_target_folder(base, lane):
+    if lane == "all":
+        return base
+    else:
+        return base.rstrip("/") + "/" + lane
+
 def run_command_with_retry(my_num_retries, my_command):
     for trys in range(my_num_retries):
         print_stderr("Running (Try %d of %d): %s" %
@@ -225,7 +231,9 @@ def main():
     run_id = get_run_id(args.run_dir)
 
     # Set all naming conventions
-    REMOTE_RUNS_FOLDER = "/data/runs"
+    REMOTE_RUN_FOLDER = "/" + run_id + "/runs" 
+    REMOTE_READS_FOLDER = "/" + run_id + "/reads"
+
     FILE_PREFIX = "run." + run_id+ ".lane."
 
     # Prep log & record names
@@ -239,12 +247,13 @@ def main():
 
     for lane in lanes_to_upload:
         lane_prefix = FILE_PREFIX + lane
+
         lane_info.append({
                 "lane": lane,
                 "prefix": lane_prefix,
                 "log_path": os.path.join(args.log_dir, lane_prefix + ".log"),
                 "record_name": lane_prefix + ".upload_sentinel",
-                "remote_folder": REMOTE_RUNS_FOLDER + "/" + run_id+ "/lane." + lane,
+                "remote_folder": get_target_folder(REMOTE_RUN_FOLDER, lane),
                 "uploaded": False
                 })
 
@@ -328,11 +337,10 @@ def main():
 
     print_stderr("Run %s successfully streamed!" % (run_id))
 
-    REMOTE_READS_FOLDER = "/data/reads"
     if args.applet:
+
         # project verified in check_input, assuming no change
         project = dxpy.get_handler(args.project)
-        reads_folder = REMOTE_READS_FOLDER + "/" + run_id
 
         print_stderr("Initiating downstream analysis: given app(let) id %s" %args.applet)
 
@@ -344,20 +352,19 @@ def main():
             applet = dxpy.get_handler(args.applet)
 
             # Prepare output folder, if downstream analysis specified
-            output_folder = "{folder}/{lane}".format(folder=reads_folder, lane=lane)
-
-            print_stderr("Creating output folder %s" %(output_folder))
+            reads_target_folder = get_target_folder(REMOTE_READS_FOLDER, lane)
+            print_stderr("Creating output folder %s" %(reads_target_folder))
 
             try:
-                project.new_folder(output_folder, parents=True)
+                project.new_folder(reads_target_folder, parents=True)
             except dxpy.DXError as e:
-                raise_error("Failed to create new folder %s. %s" %(output_folder, e))
+                raise_error("Failed to create new folder %s. %s" %(reads_target_folder, e))
 
             # Run specified applet
             job = applet.run({"upload_sentinel_record": dxpy.dxlink(record)},
-                        folder=output_folder, project=args.project)
+                        folder=reads_target_folder, project=args.project)
 
-            print_stderr("Initiated job %s from applet %s" %(job, args.applet))
+            print_stderr("Initiated job %s from applet %s for lane %s" %(job, args.applet, lane))
 
 if __name__ == "__main__":
     main()

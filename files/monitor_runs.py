@@ -10,6 +10,7 @@ import sys
 import time
 import yaml
 
+# Whether to print verbose Debuggin messages
 DEBUG = False
 
 # If upload is incomplete and local log has not been updated
@@ -17,6 +18,8 @@ DEBUG = False
 # and will be relaunched
 N_INTERVALS_TO_WAIT = 5
 
+# Default config values (used when corresponding configs
+# are not provided in the config YAML file)
 CONFIG_DEFAULT = {
     "log_dir": "/opt/dnanexus/LOGS",
     "tmp_dir": "/opt/dnanexus/TMP",
@@ -26,8 +29,23 @@ CONFIG_DEFAULT = {
     "n_retries": 3
 }
 
-RUN_UPLOAD_DEST = "/data/runs"
+# Base folder in which the RUN folders are deposited
+# In our current setup, we assume the following folder strcuture
+# /
+#  - <RUN_ID>
+#      - runs (RUN folder tarball)
+#      - reads (demuxed reads)
+#      - etc (further downstream analysis)
 
+RUN_UPLOAD_DEST = "/"
+
+# Name of the sub-folder that corresponds to where the
+# run directory tarballs and upload sentinel file are stored
+REMOTE_RUN_FOLDER = "runs"
+
+# Number of incremental_upload threads to execute concurrently
+# It is not recommended to open too many upload thread, since each
+# upload is already optimized to maximize upload bandwidth
 N_STREAMING_THREADS = 1
 
 def parse_args():
@@ -88,6 +106,8 @@ def get_dx_auth_token():
 
 
 def get_streaming_config(config_file, project, applet, token):
+    """ Configure settings by reading in the config_file, which 
+    is assumed to be a YAML file"""
     config = {"project": project, "token": token}
     if applet:
         config["applet"] = applet
@@ -97,6 +117,7 @@ def get_streaming_config(config_file, project, applet, token):
     return config
 
 def check_config_fields(config):
+    """ Validate the given directory fields in config are valid directories"""
     def invalid_config(msg):
         sys.exit("Config file is invalid: {0}".format(msg))
 
@@ -117,6 +138,9 @@ def check_config_fields(config):
     return config
 
 def get_run_folders(base_dir):
+    """ Get the local directories within the specified base_dir.
+    It does NOT check whether these directories are Illumina directories. This check
+    is left to the downstream incremental_upload.py script"""
     if not os.path.isdir(base_dir):
         sys.exit("Specified base directory for monitoring ({0}) is not a valid directory.\n {1}: {2}.".format(
             base_dir, e.errno, e.strerror))
@@ -127,6 +151,8 @@ def get_run_folders(base_dir):
             and not dir_name.startswith(".")]
 
 def check_dnax_folders(run_folders, project):
+    """ Check the RUN folders that have been synced (fully/partially) onto DNAnexus by looking into the
+    RUN_UPLOAD_DEST folder of the given project. """
     try:
         dx_proj = dxpy.bindings.DXProject(project)
 
@@ -136,8 +162,6 @@ def check_dnax_folders(run_folders, project):
     try:
         dnax_folders = dx_proj.list_folder(RUN_UPLOAD_DEST, only="folders")['folders']
         dnax_folders = [os.path.basename(folder) for folder in dnax_folders]
-
-        if DEBUG: print "==DEBUG== Got synced folders: ", dnax_folders
 
         synced_folders = filter( (lambda folder: folder in dnax_folders), run_folders)
         unsynced_folders = filter( (lambda folder: folder not in dnax_folders), run_folders)
@@ -159,9 +183,11 @@ def check_dnax_folders(run_folders, project):
                   RUN_UPLOAD_DEST, project, e.errno, e.strerror))
 
 def find_record(run_name, project):
+    """ Wrapper to find the sentinel record for a given run_name in the given 
+    DNAnexus project"""
     try:
         record = dxpy.find_one_data_object(classname="record", name="*{0}*".format(run_name),
-                                       project=project, folder="{0}/{1}".format(RUN_UPLOAD_DEST, run_name),
+                                       project=project, folder="{0}/{1}/{2}".format(RUN_UPLOAD_DEST.rstrip('/'), run_name, REMOTE_RUN_FOLDER),
                                        name_mode="glob", return_handler=True, more_ok=False, zero_ok=False)
 
         return record
@@ -172,6 +198,11 @@ def find_record(run_name, project):
 
 
 def local_upload_has_lapsed(folder, config):
+    """ Determines whether an incomplete RUN directory sync has "lapsed", ie
+    it has failed and need to be re-triggered. Local_upload_has_lapsed will return
+    True if there has been no update to the local LOG file for N_INTERVALS_TO_WAIT * 
+    config['min_interval']"""
+
     local_log_files = glob.glob('{0}/*{1}*'.format(config['log_dir'], folder))
     if not local_log_files:
         # Could not find a local log file for the run-folder for which the upload has been initiated
@@ -203,6 +234,10 @@ def local_upload_has_lapsed(folder, config):
     return ((elapsed_time / config['min_interval']) > N_INTERVALS_TO_WAIT)
 
 def check_complete_sync(synced_folders, config):
+    """ Check whether the RUN folder sync is complete by querying the state
+    of the sentinel record (closed = complete, open = incomplete). Returns
+    a list of incomplete syncs which have been deemed to be inactive, according
+    to the local_upload_has_lapsed function"""
     incomplete_syncs = []
     for folder in synced_folders:
         sentinel_record = find_record(folder, config['project'])
@@ -220,6 +255,9 @@ def check_complete_sync(synced_folders, config):
     return incomplete_syncs
 
 def _trigger_streaming_upload(folder, config):
+    """ Execute the incremental_upload.py script, assumed to be located
+    in the same directory as the executed monitor_runs.py, potentially multiple
+    instances of this can be triggered using a thread pool"""
     curr_dir = sys.path[0]
     inc_upload_script_loc = "{0}/{1}".format(curr_dir, "incremental_upload.py")
     command = ["python", inc_upload_script_loc,
@@ -245,6 +283,8 @@ def _trigger_streaming_upload(folder, config):
         print "==ERROR== Incremental upload command {0} failed.\n Error code {1}:{2}".format(e.cmd, e.returncode, e.output)
 
 def trigger_streaming_upload(folders, config):
+    """ Open a thread pool of size N_STREAMING_THREADS
+    and trigger streaming upload for all unsynced and incomplete folders"""
     pool = multiprocessing.Pool(processes=N_STREAMING_THREADS)
     for folder in folders:
         print "Adding folder {0} to pool".format(folder)
@@ -257,6 +297,7 @@ def trigger_streaming_upload(folders, config):
     pool.join()
 
 def main():
+    """ Main entry point """
     args = parse_args()
     if DEBUG: print "==DEBUG== Got args, ", args
 
@@ -279,6 +320,7 @@ def main():
     if DEBUG: print "==DEBUG== Got config: ", streaming_config
 
     (synced_folders, unsynced_folders) = check_dnax_folders(run_folders, args.project)
+    if DEBUG: print "==DEBUG== Got synced folders: ", synced_folders
     if DEBUG: print "==DEBUG== Got unsynced folders: ", unsynced_folders
 
     folders_to_sync = unsynced_folders
