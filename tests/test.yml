@@ -1,5 +1,16 @@
 ---
 - hosts: localhost
-  remote_user: root
+  vars:
+    monitored_users:
+      - username: travis
+        applet: applet-Bq2Kkgj08FqbjV3J8xJ0K3gG
+        monitored_directories: 
+          - ~/runs
+      - username: root
+        monitored_directories:
+          - ~/home/root/runs
+    mode: debug
+    upload_project: project-BpyQyjj0Y7V0Gbg7g52Pqf8q
+
   roles:
     - dx-streaming-upload

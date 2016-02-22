@@ -1,2 +1,127 @@
 ---
-# tasks file for dx-streaming-upload
+# Install Dx-toolkit
+- name: Get DX tarball
+  unarchive: src=https://wiki.dnanexus.com/images/files/dx-toolkit-current-ubuntu-14.04-amd64.tar.gz dest=/opt/ copy=no
+
+# http://stackoverflow.com/questions/22256884/not-possible-to-source-bashrc-with-ansible
+- name: check dx version
+  shell: source /opt/dx-toolkit/environment  && dx --version
+  args:
+    executable: /bin/bash
+  register: dx_version
+
+- name: Print dx version
+  debug:
+    msg: "Dx-toolkit Version {{ dx_version.stdout }}"
+
+# Install Upload Agent
+- name: Create folder to house upload agent
+  file: path=/opt/dnanexus-upload-agent state=directory mode=0755
+
+- name: Download and unzip UA tarball
+  unarchive: src=https://wiki.dnanexus.com/images/files/dnanexus-upload-agent-current-linux.tar.gz dest=/opt/dnanexus-upload-agent copy=no
+
+- name: Move ua executable to un-versioned folder location for ease of reference
+  shell: mv /opt/dnanexus-upload-agent/*/* /opt/dnanexus-upload-agent/
+
+- name: check ua folder content
+  shell: ls /opt/dnanexus-upload-agent/
+  register: ua_folder_content
+
+- name: print ua folder content
+  debug:
+    msg: "Upload agent folder contains: {{ ua_folder_content.stdout }}"
+
+- name: Check installed UA version
+  command: ua --version
+  environment:
+    PATH: "/opt/dnanexus-upload-agent:{{ ansible_env.PATH }}"
+  register: ua_version
+
+- name: Print installed UA version
+  debug:
+    msg: "Upload agent Version {{ ua_version.stdout }}"
+
+# Logging into DNAnexus account
+- name: Log in to DNAnexus account if dx_user_token is provided
+  shell: source /opt/dx-toolkit/environment && dx login --token {{ item.dx_user_token if 'dx_user_token' in item else dx_token }} --noprojects
+  become: yes
+  become_user: "{{ item.username }}"
+  args:
+    executable: /bin/bash
+  with_items: "{{ monitored_users }}"
+  when: (dx_token is defined) or (item.dx_user_token is defined)
+
+# Copy the necessary files for RUN directory monitoring
+- name: Create the script directory for housing scripts
+  file: path=/opt/dnanexus/scripts state=directory mode=0755
+
+- name: Create the config directory for housing config files
+  file: path=/opt/dnanexus/config state=directory mode=0755
+
+- name: Copy necessary scripts
+  copy: src=../files/ dest=/opt/dnanexus/scripts
+
+- name: Copy necessary config
+  copy: src=../templates/monitor_run_config.template dest=/opt/dnanexus/config/monitor_runs.config
+
+- name: Create lock file for CRON to wait on using flock
+  file: path=/var/lock/dnanexus_uploader.lock state=touch
+
+- name: fail when project is not defined
+  fail: msg="Project to upload to was not defined"
+  when: upload_project is not defined
+
+- name: fail when local folder to monitor (for RUN dirs) is not defined
+  fail: msg="Local dir to monitor (for RUN dirs) is not defined"
+  with_items: "{{ monitored_users }}"
+  when: item.monitored_directories is not defined
+
+# Set up CRON job for monitoring
+- name: set up CRON job to run every minute in debug mode with downstream applet
+  cron: >
+    name="DNAnexus monitor runs (debug)"
+    user="{{ item.0.username }}"
+    job="flock -w 5 /var/lock/dnanexus_uploader.lock bash -ex -c 'source /opt/dx-toolkit/environment; PATH=/opt/dnanexus-upload-agent:$PATH; python /opt/dnanexus/scripts/monitor_runs.py -c /opt/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ item.1 }} {{ \'-A\' if \'applet\' in item.0 else \'\' }} {{ item.0.applet if \'applet\' in item.0 else \'\'}} -v > ~/monitor.log 2>&1' > ~/dx-stream_cron.log 2>&1"
+  with_subelements:
+        - monitored_users
+        - monitored_directories
+  become: yes
+  become_user: "{{ item.0.username }}"
+  when: mode == "debug"
+
+
+- name: set up CRON job to run every hour in deploy mode with downstream applet
+  cron: >
+    name="DNAnexus monitor runs (deploy)"
+    special_time=hourly
+    user="{{ item.0.username }}"
+    job="flock -w 5 /var/lock/dnanexus_uploader.lock bash -ex -c 'source /opt/dx-toolkit/environment; PATH=/opt/dnanexus-upload-agent:$PATH; python /opt/dnanexus/scripts/monitor_runs.py -c /opt/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ item.1 }} {{ \'-A\' if \'applet\' in item.0 else \'\' }} {{ item.0.applet if \'applet\' in item.0 else \'\'}} -v > ~/monitor.log 2>&1' > ~/dx-stream_cron.log 2>&1"
+  with_subelements:
+        - monitored_users
+        - monitored_directories
+  become: yes
+  become_user: "{{ item.0.username }}"
+  when: mode == "deploy"
+
+# Clean up CRON job in alternate mode
+- name: delete deploy mode CRON job if debug mode set
+  cron: >
+    name="DNAnexus monitor runs (deploy)"
+    user="{{ item.username }}"
+    state=absent
+  with_items: "{{ monitored_users }}"
+  become: yes
+  become_user: "{{ item.username }}"
+  when: mode == "debug"
+
+
+- name: delete debug mode CRON job if deploy mode set
+  cron: >
+    name="DNAnexus monitor runs (debug)"
+    user="{{ item.username }}"
+    state=absent
+  with_items: "{{ monitored_users }}"
+  become: yes
+  become_user: "{{ item.username }}"
+  when: mode == "deploy"
