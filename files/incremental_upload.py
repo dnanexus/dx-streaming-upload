@@ -184,6 +184,26 @@ def raise_error(msg):
 def print_stderr(msg):
     print ("[incremental_upload.py] %s" % msg, file=sys.stderr)
 
+def upload_single_file(filepath, project, folder, properties):
+    """ Upload a single file onto DNAnexus, into the project and folder specified,
+    and apply the given properties. Returns None if given filepath is invalid or
+    an error was thrown during upload"""
+    if not os.path.exists(filepath):
+        print_stderr("Invalid filepath given to upload_single_file %s" %filepath)
+        return None
+
+    try:
+        f = dxpy.upload_local_file(filepath,
+                           project=project,
+                           folder=folder,
+                           properties=properties)
+
+        return f.id
+
+    except dxpy. DXError as e:
+        print_stderr("Failed to upload local file %s to %s:%s" %(filepath, project, folder))
+        return None
+
 def run_sync_dir(lane, args, finish=False):
     # Set list of config files to include (only if lanes are specified)
     CONFIG_FILES = ["RTAConfiguration.xml", "RunInfo.xml", "RunParameters.xml",
@@ -317,22 +337,33 @@ def main():
         file_ids = run_sync_dir(lane, args, finish=True)
         record = lane["dxrecord"]
         properties = record.get_properties()
-        log_dxfile = dxpy.upload_local_file(
-                lane["log_path"],
-                project=args.project,
-                folder=lane["remote_folder"],
-                properties=properties
-                )
+        log_file_id = upload_single_file(lane["log_path"], args.project, 
+                                         lane["remote_folder"], properties)
+        runinfo_file_id = upload_single_file(args.run_dir + "/RunInfo.xml", args.project,
+                                             lane["remote_folder"], properties)
+        samplesheet_file_id = upload_single_file(args.run_dir + "/SampleSheet.csv", args.project,
+                                                 lane["remote_folder"], properties)
+
         for file_id in file_ids:
             dxpy.get_handler(file_id, project=args.project).set_properties(properties)
-        record.set_details({
+        details = {
             'run_id': run_id,
             'lanes': lane["lane"],
             'upload_thumbnails': str(args.upload_thumbnails).lower(),
             'dnanexus_path': args.project + ":" + lane["remote_folder"],
-            'log_file_id': log_dxfile.describe()["id"],
             'tar_file_ids': file_ids
-            })
+            }
+
+        # ID to singly uploaded file (when uploaded successfully)
+        if log_file_id:
+            details.update({'log_file_id': log_file_id})
+        if runinfo_file_id:
+            details.update({'runinfo_file_id': runinfo_file_id})
+        if samplesheet_file_id:
+            details.update({'samplesheet_file_id': samplesheet_file_id})
+
+        record.set_details(details)
+
         record.close()
 
     print_stderr("Run %s successfully streamed!" % (run_id))
