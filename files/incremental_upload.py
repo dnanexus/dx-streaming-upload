@@ -391,9 +391,14 @@ def main():
             except dxpy.DXError as e:
                 raise_error("Failed to create new folder %s. %s" %(reads_target_folder, e))
 
+            # Decide on job name (<executable>-<run_id>)
+            job_name = applet.title + "-" + run_id
+
             # Run specified applet
             job = applet.run({"upload_sentinel_record": dxpy.dxlink(record)},
-                        folder=reads_target_folder, project=args.project)
+                        folder=reads_target_folder,
+                        project=args.project,
+                        name=job_name)
 
             print_stderr("Initiated job %s from applet %s for lane %s" %(job, args.applet, lane))
 

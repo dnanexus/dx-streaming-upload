@@ -52,7 +52,7 @@
   with_items: "{{ monitored_users }}"
   when: (dx_token is defined) or (item.dx_user_token is defined)
 
-# Copy the necessary files for RUN directory monitoring
+# Copy the necessary scripts for RUN directory monitoring
 - name: Create the script directory for housing scripts
   file: path=/opt/dnanexus/scripts state=directory mode=0755
 
@@ -62,12 +62,39 @@
 - name: Copy necessary scripts
   copy: src=../files/ dest=/opt/dnanexus/scripts
 
-- name: Copy necessary config
-  copy: src=../templates/monitor_run_config.template dest=/opt/dnanexus/config/monitor_runs.config
+# Copy necessary config for storing local TAR location
+- name: Create the script directory for housing scripts
+  file: path=~/dnanexus/config state=directory mode=0755
+  with_items: "{{ monitored_users }}"
+  become: yes
+  become_user: "{{ item.username }}"
 
+- name: Copy necessary config to user's home directory
+  copy: src=../templates/monitor_run_config.template dest=~/dnanexus/config/monitor_runs.config
+  with_items: "{{ monitored_users }}"
+  become: yes
+  become_user: "{{ item.username }}"
+
+# Edit config file to customize local output dir (if given)
+- name: Change config file's local TAR directory
+  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^tmp_dir:.*' line='tmp_dir: \'{{ item.local_log_directory }}\''"
+  with_items: "{{ monitored_users }}"
+  become: yes
+  become_user: "{{ item.username }}"
+  when: item.local_tar_directory is defined
+
+- name: Change config file's local LOG directory
+  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^log_dir:.*' line='log_dir: \'{{ item.local_tar_directory }}\''"
+  with_items: "{{ monitored_users }}"
+  become: yes
+  become_user: "{{ item.username }}"
+  when: item.local_log_directory is defined
+
+# Create lock file
 - name: Create lock file for CRON to wait on using flock
   file: path=/var/lock/dnanexus_uploader.lock state=touch
 
+# Make sure required parameters are defined
 - name: fail when project is not defined
   fail: msg="Project to upload to was not defined"
   when: upload_project is not defined
@@ -82,7 +109,7 @@
   cron: >
     name="DNAnexus monitor runs (debug)"
     user="{{ item.0.username }}"
-    job="flock -w 5 /var/lock/dnanexus_uploader.lock bash -ex -c 'source /opt/dx-toolkit/environment; PATH=/opt/dnanexus-upload-agent:$PATH; python /opt/dnanexus/scripts/monitor_runs.py -c /opt/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ item.1 }} {{ \'-A\' if \'applet\' in item.0 else \'\' }} {{ item.0.applet if \'applet\' in item.0 else \'\'}} -v > ~/monitor.log 2>&1' > ~/dx-stream_cron.log 2>&1"
+    job="flock -w 5 /var/lock/dnanexus_uploader.lock bash -ex -c 'source /opt/dx-toolkit/environment; PATH=/opt/dnanexus-upload-agent:$PATH; python /opt/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ item.1 }} {{ \'-A\' if \'applet\' in item.0 else \'\' }} {{ item.0.applet if \'applet\' in item.0 else \'\'}} -v > ~/monitor.log 2>&1' > ~/dx-stream_cron.log 2>&1"
   with_subelements:
         - monitored_users
         - monitored_directories
@@ -96,7 +123,7 @@
     name="DNAnexus monitor runs (deploy)"
     special_time=hourly
     user="{{ item.0.username }}"
-    job="flock -w 5 /var/lock/dnanexus_uploader.lock bash -ex -c 'source /opt/dx-toolkit/environment; PATH=/opt/dnanexus-upload-agent:$PATH; python /opt/dnanexus/scripts/monitor_runs.py -c /opt/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ item.1 }} {{ \'-A\' if \'applet\' in item.0 else \'\' }} {{ item.0.applet if \'applet\' in item.0 else \'\'}} -v > ~/monitor.log 2>&1' > ~/dx-stream_cron.log 2>&1"
+    job="flock -w 5 /var/lock/dnanexus_uploader.lock bash -ex -c 'source /opt/dx-toolkit/environment; PATH=/opt/dnanexus-upload-agent:$PATH; python /opt/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ item.1 }} {{ \'-A\' if \'applet\' in item.0 else \'\' }} {{ item.0.applet if \'applet\' in item.0 else \'\'}} -v > ~/monitor.log 2>&1' > ~/dx-stream_cron.log 2>&1"
   with_subelements:
         - monitored_users
         - monitored_directories
