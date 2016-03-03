@@ -449,7 +449,7 @@ def upload_tar_files(log, args):
                     verbose_flag = '--verbose'
                 else:
                     verbose_flag = ''
-                ua_command = "ua --project %s --folder %s --do-not-compress --wait-on-close --progress %s %s --chunk-size 10M" % (tar_destination_project, tar_destination_folder, verbose_flag, tar_file)
+                ua_command = "ua --project %s --folder %s --do-not-compress --wait-on-close --progress %s %s --chunk-size 25M" % (tar_destination_project, tar_destination_folder, verbose_flag, tar_file)
                 print >> sys.stderr, ua_command
                 try:
                     dx_file_id = subprocess.check_output(ua_command, shell=True)
