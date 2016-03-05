@@ -40,6 +40,8 @@ More information and tutorials about the DNAnexus platform can be found at the [
 
 The `remote-user` that the role is run against must possess **READ** access to `monitored_folder` and **WRITE** access to disk for logging and temporary storage of tar files. These are typically stored under the `remote-user's` home directory, and is specified in the file `monitor_run_config.template` or as given explicitly by the variables `local_tar_directory` and `local_log_directory`.
 
+The machine that this role is deployed to should have at least 500Mb of free RAM available for allocation by the upload module during the time of upload.
+
 Example Playbook
 ----------------
 `dx-upload-play.yml`
