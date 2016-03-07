@@ -17,10 +17,11 @@ Role Variables
   - `monitored_directories`: (Required)  Path to the local directory that should be monitored for RUN folders. Multiple directories can be listed. Suppose that the folder `20160101_M000001_0001_000000000-ABCDE` is the RUN directory, then the folder structure assumed is `{{monitored_dir}}/20160101_M000001_0001_000000000-ABCDE`
   - `local_tar_directory`: (Optional) Path to a local folder where tarballs of RUN directory is temporarily stored. User specified in `username` need to have **WRITE** access to this folder. There should be sufficient disk space to accomodate a RUN directory in this location. This overwrites the default found in `templates/monitor_run_config.template`.
   - `local_log_directory`: (Optional) Path to a local folder where logs of streaming upload is stored, persistently. User specified in `username` need to have **WRITE** access to this folder. User should not manually manipulate files found in this folder, as the streaming upload code make assumptions that the files in this folder are not manually manipulated. This overwites the default found in `templates/monitor_run_config.template`.
-  - `applet`: (Optional) ID of a DNAnexus applet to be triggered after successful upload of the RUN directory. This applet's I/O contract should accept a DNAnexus record with the input name `upload_sentinel_record` as the input name. This applet will be triggered with only the `upload_sentinel_record` input. Future work will allow command line customization of other input parameters.
-  - `dx_user_token`: API token associated with the specific `monitored_user`. This overrides the value `dx_token`. If `dx_user_token` is not specified, defaults to `dx_token`.
+  - `applet`: (Optional) ID of a DNAnexus applet to be triggered after successful upload of the RUN directory. This applet's I/O contract should accept a DNAnexus record with the input name `upload_sentinel_record` as the input name. This applet will be triggered with only the `upload_sentinel_record` input. Future work will allow command line customization of other input parameters. Note that if the specified applet is not located, the upload process will not commence.
+  - `script`: (Optional) File path to an executable script to be triggered after successful upload for the RUN directory. The script must be executable by the user specified by `username`. The script will be triggered in the with a single command line argument, correpsonding to the filepath of the RUN directory (see section *Example Script*). If the file path to the script given does not point to a file, or if the file is not executable by the user, then the upload process will not commence.
+  - `dx_user_token`: (Optional) API token associated with the specific `monitored_user`. This overrides the value `dx_token`. If `dx_user_token` is not specified, defaults to `dx_token`.
 
-**Note** DNAnexus login is persistent and the login environment is stored on disk in the the Ansible user's home directory. User of this playbook responsibility to make sure that every Ansible user (`monitored_user`) with a streaming upload job assigned has been logged into DNAnexus by either specifying a `dx_token` or `dx_user_token` at least once.
+**Note** DNAnexus login is persistent and the login environment is stored on disk in the the Ansible user's home directory. User of this playbook responsibility to make sure that every Ansible user (`monitored_user`) with a streaming upload job assigned has been logged into DNAnexus by either specifying a `dx_token` or `dx_user_token`.
 
 Dependencies
 ------------
@@ -72,12 +73,26 @@ ie. `ansible-playbook dx-upload-play.yml -i inventory --extra-vars "dx_token=<SE
 
 We recommend that the token given is limited in scope to the upload project, and has no higher than **CONTRIBUTE** privileges.
 
+
+Example Script
+--------------
+The following is an example script that writes a flat file to the RUN directory once a RUN directory has been successfully streamed.
+
+``
+#!/bin/bash
+
+set -e -x -o pipefail
+
+rundir="$1"
+echo "Completed streaming run directory: $rundir" > "$rundir/COMPLETE.txt"
+```
+
 Actions performed by Role
 -------------------------
 The dx-streaming-upload role perform, broadly, the following:
 
 1. Installs the DNAnexus tools [dx-toolkit](https://wiki.dnanexus.com/Downloads#DNAnexus-Platform-SDK) and [upload agent](https://wiki.dnanexus.com/Downloads#Upload-Agent) on the remote machine.
-2. Set up a CRON job that monitors a given directory for RUN directories periodically, and streams the RUN directory into a DNAnexus project, triggering an app(let) upon successful upload of the directory (when specified by user)
+2. Set up a CRON job that monitors a given directory for RUN directories periodically, and streams the RUN directory into a DNAnexus project, triggering an app(let) upon successful upload of the directory and a local script (when specified by user)
 
 Files generated
 ----------------
@@ -113,13 +128,13 @@ project
 ```
 
 The `reads` folder (and subfolders) will only be created if `downstream_applet` is specified.
-`RunInfo.xml` and `SampleSheet.csv` will only be upladed if they can be located within the root of the local RUN directory. 
+`RunInfo.xml` and `SampleSheet.csv` will only be upladed if they can be located within the root of the local RUN directory.
 
 Logging, Notification and Error Handling
 ------------------------------------------
 **Uploading**
 
-A log of the CRON command (executed with `bash -e`) is written to the user's home folder `~/dx-stream_cron.log` and can be used to check the top level command triggered. 
+A log of the CRON command (executed with `bash -e`) is written to the user's home folder `~/dx-stream_cron.log` and can be used to check the top level command triggered.
 
 The verbose log of the upload process (generated by the top-level `monitor_runs.py`) is written to the user's home folder `~/monitor.log`.
 

@@ -74,6 +74,12 @@ def parse_args():
             "successfully uploaded (e.g. for demultiplexing). A single input, " +
             "-i upload_sentinel_record will be passed to the applet, with the " +
             "appropriate sentinel record id for the uploaded run folder.")
+    parser.add_argument("-s", "--script", metavar="<filepath>",
+            help="Path to a executable script that should be run (locally) after " +
+            "success upload. A single command line argument (corresponding to the " +
+            "path of the RUN directory will be passed to the executable. Note: " +
+            "script will be run after the applet has been executed.")
+
 
     # Mutually exclusive inputs
     upload_debug_group = parser.add_mutually_exclusive_group(required=False)
@@ -124,6 +130,11 @@ def check_input(args):
             raise_error("Unable to resolve applet %s. %s" %(args.applet, e))
         except dxpy.exceptions.DXError as e:
             raise_error("Error getting handler for applet (%s). %s" %(args.applet, e))
+
+    # Check that executable to launch locally is executable
+    if args.script:
+        if not (os.path.isfile(args.script) and os.access(args.script, os.X_OK)):
+            raise_error("Executable/script passed by -s: (%s) is not executable" %(args.script))
 
     if not args.dxpy_upload:
         print_stderr("Checking if ua is in $PATH")
@@ -401,6 +412,15 @@ def main():
                         name=job_name)
 
             print_stderr("Initiated job %s from applet %s for lane %s" %(job, args.applet, lane))
+
+
+        if args.script:
+            # script has been validated to be executable earlier, assume no change
+            try:
+                sub.check_call([args.script, args.run_dir])
+            except sub.CalledProcessError, e:
+                raise_error("Executable (%s) failed with error %d: %s" %(args.script, e.returncode, e.output))
+
 
 if __name__ == "__main__":
     main()

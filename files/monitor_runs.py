@@ -83,6 +83,10 @@ def parse_args():
                         help='ID of DNAnexus app(let) to execute after successful ' +
                              'upload of the RUN folder, see incremental_upload.py',
                         required=False)
+    optionalNamed.add_argument('--script', '-s',
+                        help='Script to execute after successful upload of the RUN folder, ' +
+                              'see incremental_upload.py',
+                        required=False)
 
     args = parser.parse_args()
     # Canonize file paths
@@ -105,12 +109,14 @@ def get_dx_auth_token():
             using an API token!\n{0}: {1}".format(e.errno, e.strerror))
 
 
-def get_streaming_config(config_file, project, applet, token):
-    """ Configure settings by reading in the config_file, which 
+def get_streaming_config(config_file, project, applet, script, token):
+    """ Configure settings by reading in the config_file, which
     is assumed to be a YAML file"""
     config = {"project": project, "token": token}
     if applet:
         config["applet"] = applet
+    if script:
+        config["script"] = os.path.abspath(script)
     user_config_dict = yaml.load(config_file)
     for key, default in CONFIG_DEFAULT.items():
         config[key] = user_config_dict.get(key, default)
@@ -272,6 +278,8 @@ def _trigger_streaming_upload(folder, config):
                "-R", config['n_retries']]
     if 'applet' in config:
         command += ["-A", config['applet']]
+    if 'script' in config:
+        command += ["-s", config['script']]
 
     # Ensure all numerical values are formatted as string
     command = [str(word) for word in command]
@@ -313,7 +321,7 @@ def main():
     run_folders = get_run_folders(args.directory)
     if DEBUG: print "==DEBUG== Got RUN folders: ", run_folders
 
-    streaming_config = get_streaming_config(args.config, args.project, args.applet, token)
+    streaming_config = get_streaming_config(args.config, args.project, args.applet, args.script, token)
     if DEBUG: print "==DEBUG== Got config: ", streaming_config
 
     streaming_config = check_config_fields(streaming_config)
