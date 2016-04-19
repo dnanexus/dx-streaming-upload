@@ -2,10 +2,9 @@
 - hosts: localhost
   vars:
     monitored_users:
-      - username: yifei
+      - username: travis
         applet: applet-Bq2Kkgj08FqbjV3J8xJ0K3gG
-        script: ~/script.sh
-        monitored_directories:
+        monitored_directories: 
           - ~/runs
       - username: root
         monitored_directories:

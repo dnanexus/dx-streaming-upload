@@ -78,7 +78,7 @@ Example Script
 --------------
 The following is an example script that writes a flat file to the RUN directory once a RUN directory has been successfully streamed.
 
-``
+```
 #!/bin/bash
 
 set -e -x -o pipefail

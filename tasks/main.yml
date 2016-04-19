@@ -19,7 +19,7 @@
   file: path=/opt/dnanexus-upload-agent state=directory mode=0755
 
 - name: Download and unzip UA tarball
-  unarchive: src=https://wiki.dnanexus.com/images/files/dnanexus-upload-agent-current-linux.tar.gz dest=/opt/dnanexus-upload-agent copy=no
+  unarchive: src=https://wiki.dnanexus.com/images/files/dnanexus-upload-agent-1.5.10-linux.tar.gz dest=/opt/dnanexus-upload-agent copy=no
 
 - name: Move ua executable to un-versioned folder location for ease of reference
   shell: mv /opt/dnanexus-upload-agent/*/* /opt/dnanexus-upload-agent/
