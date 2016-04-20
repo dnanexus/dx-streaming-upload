@@ -69,11 +69,6 @@ def parse_args():
     parser.add_argument("-R", "--retries", metavar="<int>", type=int, default=3,
             help="Number of times the script will attempt to tar and upload " +
             "a set of files before failing.")
-    parser.add_argument("-A", "--applet", metavar="<applet-id>",
-            help="DNAnexus applet id to execute after the RUN folder has been " +
-            "successfully uploaded (e.g. for demultiplexing). A single input, " +
-            "-i upload_sentinel_record will be passed to the applet, with the " +
-            "appropriate sentinel record id for the uploaded run folder.")
     parser.add_argument("-s", "--script", metavar="<filepath>",
             help="Path to a executable script that should be run (locally) after " +
             "success upload. A single command line argument (corresponding to the " +
@@ -81,7 +76,7 @@ def parse_args():
             "script will be run after the applet has been executed.")
 
 
-    # Mutually exclusive inputs
+    # Mutually exclusive inputs for verbose loggin (UA) vs dxpy upload
     upload_debug_group = parser.add_mutually_exclusive_group(required=False)
     upload_debug_group.add_argument("--dxpy-upload", "-d", action="store_true",
             help="This flag allows you to specify to use dxpy instead of " +
@@ -89,6 +84,20 @@ def parse_args():
     upload_debug_group.add_argument("--verbose", "-v", action="store_true",
         help="This flag allows you to specify upload agent --verbose mode.")
 
+    # Mutually exclusive inputs for triggering applet / workflow after upload
+    downstream_analysis_group = parser.add_mutually_exclusive_group(required=False)
+    downstream_analysis_group.add_argument("-A", "--applet", metavar="<applet-id>",
+            help="DNAnexus applet id to execute after the RUN folder has been " +
+            "successfully uploaded (e.g. for demultiplexing). A single input, " +
+            "-i upload_sentinel_record will be passed to the applet, with the " +
+            "appropriate sentinel record id for the uploaded run folder. " +
+            "Mutually exclusive with --workflow.")
+    downstream_analysis_group.add_argument("-w", "--workflow", metavar="<workflow-id>",
+            help="DNAnexus workflow id to execute after the RUN fodler has been " +
+            "sucessfully uploaded (e.g. for demux/variation calling). A single " +
+            "input, -iupload_sentinel_record will be passed to the first stage of " +
+            "the workflow (stage 0), with the appropriate sentinel record id for " +
+            "uploaded run folder. Mutually exclusive with --applet.")
     # Parse args
     args = parser.parse_args()
 
@@ -130,6 +139,15 @@ def check_input(args):
             raise_error("Unable to resolve applet %s. %s" %(args.applet, e))
         except dxpy.exceptions.DXError as e:
             raise_error("Error getting handler for applet (%s). %s" %(args.applet, e))
+
+    # Check that chained downstream workflow is valid
+    if args.workflow:
+        try:
+            dxpy.get_handler(args.workflow).describe()
+        except dxpy.exceptions.DXAPIError as e:
+            raise_error("Unable to resolve workflow %s. %s" %(args.workflow, e))
+        except dxpy.exceptions.DXError as e:
+            raise_error("Error getting handler for workflow (%s). %s" %(args.workflow, e))
 
     # Check that executable to launch locally is executable
     if args.script:
@@ -262,8 +280,9 @@ def main():
     run_id = get_run_id(args.run_dir)
 
     # Set all naming conventions
-    REMOTE_RUN_FOLDER = "/" + run_id + "/runs" 
+    REMOTE_RUN_FOLDER = "/" + run_id + "/runs"
     REMOTE_READS_FOLDER = "/" + run_id + "/reads"
+    REMOTE_ANALYSIS_FOLDER = "/" + run_id + "/analyses"
 
     FILE_PREFIX = "run." + run_id+ ".lane."
 
@@ -380,7 +399,6 @@ def main():
     print_stderr("Run %s successfully streamed!" % (run_id))
 
     if args.applet:
-
         # project verified in check_input, assuming no change
         project = dxpy.get_handler(args.project)
 
@@ -412,14 +430,49 @@ def main():
                         name=job_name)
 
             print_stderr("Initiated job %s from applet %s for lane %s" %(job, args.applet, lane))
+    # Close if args.applet
 
+    if args.workflow:
+        # project verified in check_input, assuming no change
+        project = dxpy.get_handler(args.project)
 
-        if args.script:
-            # script has been validated to be executable earlier, assume no change
+        print_stderr("Initiating downstream analysis: given workflow id %s" %args.workflow)
+
+        for info in lane_info:
+            lane = info["lane"]
+            record = info["dxrecord"]
+
+            # workflow verified in check_input, assume no change
+            workflow = dxpy.get_handler(args.workflow)
+
+            # Prepare output folder, if downstream analysis specified
+            analyses_target_folder = get_target_folder(REMOTE_ANALYSIS_FOLDER, lane)
+            print_stderr("Creating output folder %s" %(analyses_target_folder))
+
             try:
-                sub.check_call([args.script, args.run_dir])
-            except sub.CalledProcessError, e:
-                raise_error("Executable (%s) failed with error %d: %s" %(args.script, e.returncode, e.output))
+                project.new_folder(analyses_target_folder, parents=True)
+            except dxpy.DXError as e:
+                raise_error("Failed to create new folder %s. %s" %(analyses_target_folder, e))
+
+            # Decide on job name (<executable>-<run_id>)
+            job_name = workflow.title + "-" + run_id
+
+            # Run specified applet
+            job = workflow.run({"0.upload_sentinel_record": dxpy.dxlink(record)},
+                        folder=analyses_target_folder,
+                        project=args.project,
+                        name=job_name)
+
+            print_stderr("Initiated analyses %s from workflow %s for lane %s" %(job, args.applet, lane))
+
+    # Close if args.workflow
+
+    if args.script:
+        # script has been validated to be executable earlier, assume no change
+        try:
+            sub.check_call([args.script, args.run_dir])
+        except sub.CalledProcessError, e:
+            raise_error("Executable (%s) failed with error %d: %s" %(args.script, e.returncode, e.output))
 
 
 if __name__ == "__main__":

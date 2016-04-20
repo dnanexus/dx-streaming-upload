@@ -79,13 +79,23 @@ def parse_args():
 
     optionalNamed = parser.add_argument_group("Optional named arguemnts")
 
-    optionalNamed.add_argument('--applet', '-A',
-                        help='ID of DNAnexus app(let) to execute after successful ' +
-                             'upload of the RUN folder, see incremental_upload.py',
-                        required=False)
+
     optionalNamed.add_argument('--script', '-s',
                         help='Script to execute after successful upload of the RUN folder, ' +
                               'see incremental_upload.py',
+                        required=False)
+
+    downstreamAnalysis = parser.add_mutually_exclusive_group(required=False)
+
+    downstreamAnalysis.add_argument('--applet', '-A',
+                        help='ID of DNAnexus app(let) to execute after successful ' +
+                             'upload of the RUN folder, see incremental_upload.py. ' +
+                             'Mutually exclusive with --workflow.',
+                        required=False)
+    downstreamAnalysis.add_argument('--workflow', '-w',
+                        help='ID of DNAnexus workflow to execute after successful ' +
+                             'upload of the RUN folder, see incremental_upload.py ' +
+                             'Mutually exclusive with --applet',
                         required=False)
 
     args = parser.parse_args()
@@ -109,12 +119,14 @@ def get_dx_auth_token():
             using an API token!\n{0}: {1}".format(e.errno, e.strerror))
 
 
-def get_streaming_config(config_file, project, applet, script, token):
+def get_streaming_config(config_file, project, applet, workflow, script, token):
     """ Configure settings by reading in the config_file, which
     is assumed to be a YAML file"""
     config = {"project": project, "token": token}
     if applet:
         config["applet"] = applet
+    if workflow:
+        config["workflow"] = workflow
     if script:
         config["script"] = os.path.abspath(script)
     user_config_dict = yaml.load(config_file)
@@ -148,8 +160,8 @@ def get_run_folders(base_dir):
     It does NOT check whether these directories are Illumina directories. This check
     is left to the downstream incremental_upload.py script"""
     if not os.path.isdir(base_dir):
-        sys.exit("Specified base directory for monitoring ({0}) is not a valid directory.\n {1}: {2}.".format(
-            base_dir, e.errno, e.strerror))
+        sys.exit("Specified base directory for monitoring ({0}) is not a valid directory.".format(
+            base_dir))
 
     # Get all directory names which are not hidden (ie doesn't starts with '.')
     return [dir_name for dir_name in os.listdir(base_dir)
@@ -276,8 +288,13 @@ def _trigger_streaming_upload(folder, config):
                "-z", config['min_size'],
                "-i", config['min_interval'],
                "-R", config['n_retries']]
+
     if 'applet' in config:
         command += ["-A", config['applet']]
+
+    if 'workflow' in config:
+        command += ["-w", config['workflow']]
+
     if 'script' in config:
         command += ["-s", config['script']]
 
@@ -321,7 +338,10 @@ def main():
     run_folders = get_run_folders(args.directory)
     if DEBUG: print "==DEBUG== Got RUN folders: ", run_folders
 
-    streaming_config = get_streaming_config(args.config, args.project, args.applet, args.script, token)
+    streaming_config = get_streaming_config(args.config, args.project,
+                                            args.applet, args.workflow,
+                                            args.script, token)
+
     if DEBUG: print "==DEBUG== Got config: ", streaming_config
 
     streaming_config = check_config_fields(streaming_config)
