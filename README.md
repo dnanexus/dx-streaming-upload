@@ -17,7 +17,8 @@ Role Variables
   - `monitored_directories`: (Required)  Path to the local directory that should be monitored for RUN folders. Multiple directories can be listed. Suppose that the folder `20160101_M000001_0001_000000000-ABCDE` is the RUN directory, then the folder structure assumed is `{{monitored_dir}}/20160101_M000001_0001_000000000-ABCDE`
   - `local_tar_directory`: (Optional) Path to a local folder where tarballs of RUN directory is temporarily stored. User specified in `username` need to have **WRITE** access to this folder. There should be sufficient disk space to accomodate a RUN directory in this location. This overwrites the default found in `templates/monitor_run_config.template`.
   - `local_log_directory`: (Optional) Path to a local folder where logs of streaming upload is stored, persistently. User specified in `username` need to have **WRITE** access to this folder. User should not manually manipulate files found in this folder, as the streaming upload code make assumptions that the files in this folder are not manually manipulated. This overwites the default found in `templates/monitor_run_config.template`.
-  - `applet`: (Optional) ID of a DNAnexus applet to be triggered after successful upload of the RUN directory. This applet's I/O contract should accept a DNAnexus record with the input name `upload_sentinel_record` as the input name. This applet will be triggered with only the `upload_sentinel_record` input. Future work will allow command line customization of other input parameters. Note that if the specified applet is not located, the upload process will not commence.
+  - `applet`: (Optional) ID of a DNAnexus applet to be triggered after successful upload of the RUN directory. This applet's I/O contract should accept a DNAnexus record with the  name `upload_sentinel_record` as input. This applet will be triggered with only the `upload_sentinel_record` input. Future work will allow command line customization of other input parameters. Note that if the specified applet is not located, the upload process will not commence. Mutually exclusive with `workflow`. The role will fail if both are specified.
+  - `workflow`: (Optional) ID of a DNAnexus workflow to be triggered after successful upload of the RUN directory. This workflow's I/O contract should accept a DNAnexus record with the  name `upload_sentinel_record` in the 1st stage (stage 0) of the workflow as input. No other input will be specified; and should thus be prepopulated by default values in the workflow. Note that if the specified workflow is not located, the upload process will not commence. Mutually exclusive with `applet`. The role will fail if both are specified.
   - `script`: (Optional) File path to an executable script to be triggered after successful upload for the RUN directory. The script must be executable by the user specified by `username`. The script will be triggered in the with a single command line argument, correpsonding to the filepath of the RUN directory (see section *Example Script*). If the file path to the script given does not point to a file, or if the file is not executable by the user, then the upload process will not commence.
   - `dx_user_token`: (Optional) API token associated with the specific `monitored_user`. This overrides the value `dx_token`. If `dx_user_token` is not specified, defaults to `dx_token`.
 
@@ -59,6 +60,7 @@ Example Playbook
       - username: root
         monitored_directories:
           - ~/home/root/runs
+        workflow: workflow-BvFz31j0Y7V5QPf09x9y91pF
     mode: debug
     upload_project: project-BpyQyjj0Y7V0Gbg7g52Pqf8q
 
@@ -122,8 +124,10 @@ project
        │    │  run.20160101_M000001_0001_000000000-ABCDE.lane.all_001.tar.gz
        │    │  ...
        │
-       └───reads
+       └───reads (or analyses)
             │  output files from downstream applet (e.g. demx)
+            │   "reads" folder will be created if an applet is triggered
+            │   "analyses" folder will be created if a workflow is triggered
             │  ...
 ```
 
