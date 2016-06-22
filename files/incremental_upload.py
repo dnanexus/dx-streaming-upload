@@ -63,6 +63,12 @@ def parse_args():
     parser.add_argument("-i", "--sync-interval", metavar="<seconds>", type=int,
             default=1800, help="Interval at which the run directory will be " +
             "scanned, and new files will be tarred and uploaded")
+    parser.add_argument("-D", "--run-duration", metavar="<duration>", type=str,
+            default="24h", help="Expected duration of the run, acceptable suffix:" +
+            "s, m, h, d, w, M, y. (default %(default)s)")
+    parser.add_argument("-I", "--intervals-to-wait", metavar="<int>", type=int,
+            default=3, help="Number of --run-duration intervals to wait for run to be " +
+            "complete. (default %(default)s)")
     parser.add_argument("-u", "--upload-thumbnails", action="store_true",
             help="Flag to specify uploaded thumbnail (JPEG) files as well " +
             "as BCL files")
@@ -341,10 +347,20 @@ def main():
         print_stderr("EXITING: All lanes already uploaded")
         sys.exit(1)
 
+    seconds_to_wait = (dxpy.utils.normalize_timedelta(args.run_duration) / 1000 * args.intervals_to_wait)
+    print_stderr("Maximum allowable time for run to complete: %d seconds." %seconds_to_wait)
+
+    initial_start_time = time.time()
     # While loop waiting for RTAComplete.txt or RTAComplete.xml
     while (not os.path.isfile(os.path.join(args.run_dir, "RTAComplete.txt"))
         and not os.path.isfile(os.path.join(args.run_dir, "RTAComplete.xml"))):
         start_time=time.time()
+
+        run_time = start_time - initial_start_time
+        # Fail if run time exceeds total time to wait
+        if run_time > seconds_to_wait:
+            print_stderr("EXITING: Upload failed. Run did not complete after %d seconds (max wait = %ds)" %(run_time, seconds_to_wait))
+            sys.exit(1)
 
         # Loop through all lanes in run directory
         for lane in lane_info:
@@ -367,7 +383,7 @@ def main():
         file_ids = run_sync_dir(lane, args, finish=True)
         record = lane["dxrecord"]
         properties = record.get_properties()
-        log_file_id = upload_single_file(lane["log_path"], args.project, 
+        log_file_id = upload_single_file(lane["log_path"], args.project,
                                          lane["remote_folder"], properties)
         runinfo_file_id = upload_single_file(args.run_dir + "/RunInfo.xml", args.project,
                                              lane["remote_folder"], properties)
@@ -463,7 +479,7 @@ def main():
                         project=args.project,
                         name=job_name)
 
-            print_stderr("Initiated analyses %s from workflow %s for lane %s" %(job, args.applet, lane))
+            print_stderr("Initiated analyses %s from workflow %s for lane %s" %(job, args.workflow, lane))
 
     # Close if args.workflow
 
