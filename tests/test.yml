@@ -4,8 +4,10 @@
     monitored_users:
       - username: travis
         applet: applet-Bq2Kkgj08FqbjV3J8xJ0K3gG
-        monitored_directories: 
+        monitored_directories:
           - ~/runs
+        run_length: 24h
+        n_seq_intervals: 2
       - username: root
         monitored_directories:
           - ~/home/root/runs
