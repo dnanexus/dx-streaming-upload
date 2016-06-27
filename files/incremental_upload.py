@@ -69,9 +69,12 @@ def parse_args():
     parser.add_argument("-I", "--intervals-to-wait", metavar="<int>", type=int,
             default=3, help="Number of --run-duration intervals to wait for run to be " +
             "complete. (default %(default)s)")
-    parser.add_argument("-u", "--upload-thumbnails", action="store_true",
+    parser.add_argument("-U", "--upload-thumbnails", action="store_true",
             help="Flag to specify uploaded thumbnail (JPEG) files as well " +
             "as BCL files")
+    parser.add_argument("-u", "--upload-threads", metavar="<int>", type=int,
+            default=8, help="Number of upload threads in Upload Agent " +
+            "(decrease down to 1 for low bandwidth connections, default %(default)s)")
     parser.add_argument("-R", "--retries", metavar="<int>", type=int, default=3,
             help="Number of times the script will attempt to tar and upload " +
             "a set of files before failing.")
@@ -265,6 +268,7 @@ def run_sync_dir(lane, args, finish=False):
     invocation.extend(exclude_patterns)
     invocation.extend(["--min-tar-size", str(args.min_size)])
     invocation.extend(["--max-tar-size", str(args.max_size)])
+    invocation.extend(["--upload-threads", str(args.upload_threads)])
     invocation.extend(["--prefix", lane["prefix"]])
     if args.verbose:
         invocation.append("--verbose")

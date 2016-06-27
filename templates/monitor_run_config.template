@@ -21,3 +21,10 @@ run_length: 24h
 # and the program will not attempt to upload it
 # Correspond to the -I parameter in incremental upload
 n_seq_intervals: 2
+
+# Number of upload threads executed by Upload Agent (UA)
+# This number should be reduced (to as low as 1) for upload
+# sites with low upload bandwidth to increase chance
+# of successful uploads in spite of network disruptions
+# Corresponds to the -u option in UA and incremental_upload.py
+n_upload_threads: 8

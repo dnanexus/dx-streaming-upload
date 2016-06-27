@@ -28,7 +28,8 @@ CONFIG_DEFAULT = {
     "min_interval": 1800,
     "n_retries": 3,
     "run_length": "24h",
-    "n_seq_intervals": 2
+    "n_seq_intervals": 2,
+    "n_upload_threads": 8
 }
 
 # Base folder in which the RUN folders are deposited
@@ -334,6 +335,7 @@ def _trigger_streaming_upload(folder, config):
                "-R", config['n_retries'],
                "-D", config['run_length'],
                "-I", config['n_seq_intervals'],
+               "-u", config['n_upload_threads']
                "--verbose"]
 
     if 'applet' in config:
