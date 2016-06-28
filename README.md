@@ -19,10 +19,12 @@ Role Variables
   - `local_log_directory`: (Optional) Path to a local folder where logs of streaming upload is stored, persistently. User specified in `username` need to have **WRITE** access to this folder. User should not manually manipulate files found in this folder, as the streaming upload code make assumptions that the files in this folder are not manually manipulated. This overwites the default found in `templates/monitor_run_config.template`.
   - `run_length`: (Optional) Expected duration of a sequencing run, corresponds to the -D paramter in incremental upload (For example, 24h). Acceptable suffix: s, m, h, d, w, M, y.
   - `n_seq_intervals`: (Optional) Number of intervals to wait for run to complete. If the sequencing run has not completed within `n_seq_intervals` * `run_length`, it will be deemed as aborted and the program will not attempt to upload it. Corresponds to the -I parameter in incremental upload.
-  - `applet`: (Optional) ID of a DNAnexus applet to be triggered after successful upload of the RUN directory. This applet's I/O contract should accept a DNAnexus record with the  name `upload_sentinel_record` as input. This applet will be triggered with only the `upload_sentinel_record` input. Future work will allow command line customization of other input parameters. Note that if the specified applet is not located, the upload process will not commence. Mutually exclusive with `workflow`. The role will fail if both are specified.
-  - `workflow`: (Optional) ID of a DNAnexus workflow to be triggered after successful upload of the RUN directory. This workflow's I/O contract should accept a DNAnexus record with the  name `upload_sentinel_record` in the 1st stage (stage 0) of the workflow as input. No other input will be specified; and should thus be prepopulated by default values in the workflow. Note that if the specified workflow is not located, the upload process will not commence. Mutually exclusive with `applet`. The role will fail if both are specified.
-  - `script`: (Optional) File path to an executable script to be triggered after successful upload for the RUN directory. The script must be executable by the user specified by `username`. The script will be triggered in the with a single command line argument, correpsonding to the filepath of the RUN directory (see section *Example Script*). If the file path to the script given does not point to a file, or if the file is not executable by the user, then the upload process will not commence.
+  - `n_upload_threads`: (Optional) Number of upload threads used by Upload Agent. For sites with severe upload bandwidth limitations (<100kb/s), it is advised to reduce this to 1, to increase robustness of upload in face of possible network disruptions. Default=8.
+  - `script`: (Optional) File path to an executable script to be triggered after successful upload for the RUN directory. The script must be executable by the user specified by `username`. The script will be triggered in the with a single command line argument, correpsonding to the filepath of the RUN directory (see section *Example Script*). **If the file path to the script given does not point to a file, or if the file is not executable by the user, then the upload process will not commence.**
   - `dx_user_token`: (Optional) API token associated with the specific `monitored_user`. This overrides the value `dx_token`. If `dx_user_token` is not specified, defaults to `dx_token`.
+  - `applet`: (Optional) ID of a DNAnexus applet to be triggered after successful upload of the RUN directory. This applet's I/O contract should accept a DNAnexus record with the  name `upload_sentinel_record` as input. This applet will be triggered with only the `upload_sentinel_record` input. Additional input can be specified using the variable `downstream_input`. **Note that if the specified applet is not located, the upload process will not commence. Mutually exclusive with `workflow`. The role will raise an error and fail if both are specified.**
+  - `workflow`: (Optional) ID of a DNAnexus workflow to be triggered after successful upload of the RUN directory. This workflow's I/O contract should accept a DNAnexus record with the  name `upload_sentinel_record` in the 1st stage (stage 0) of the workflow as input. Additional input can be specified using the variable `downstream_input`. **Note that if the specified workflow is not located, the upload process will not commence. Mutually exclusive with `applet`. The role will raise an error and fail if both are specified.**
+  - `downstream_input`: (Optional) A JSON string, parsable as a python `dict` of `str`:``str`, where the **key** is the input_name recognized by a DNAnexus applet/workflow and the **value** is the corresponding input. For examples and detailed explanation, see section titled `Downstream analysis`. **Note that the role will raise an error and fail if this string is not JSON-parsable as a dict of the expected format**
 
 **Note** DNAnexus login is persistent and the login environment is stored on disk in the the Ansible user's home directory. User of this playbook responsibility to make sure that every Ansible user (`monitored_user`) with a streaming upload job assigned has been logged into DNAnexus by either specifying a `dx_token` or `dx_user_token`.
 
@@ -54,15 +56,17 @@ Example Playbook
   vars:
     monitored_users:
       - username: travis
-        applet: applet-Bq2Kkgj08FqbjV3J8xJ0K3gG
         local_tar_directory: ~/new_location/upload/TMP
         local_log_directory: ~/another_location/upload/LOG
         monitored_directories:
           - ~/runs
+        applet: applet-Bq2Kkgj08FqbjV3J8xJ0K3gG
+        downstream_input: '{"sequencing_center": "CENTER_A"}'
       - username: root
         monitored_directories:
           - ~/home/root/runs
         workflow: workflow-BvFz31j0Y7V5QPf09x9y91pF
+        downstream_input: '{"0.sequencing_center: "CENTER_A"}'
     mode: debug
     upload_project: project-BpyQyjj0Y7V0Gbg7g52Pqf8q
 
@@ -77,10 +81,11 @@ ie. `ansible-playbook dx-upload-play.yml -i inventory --extra-vars "dx_token=<SE
 
 We recommend that the token given is limited in scope to the upload project, and has no higher than **CONTRIBUTE** privileges.
 
-
 Example Script
 --------------
 The following is an example script that writes a flat file to the RUN directory once a RUN directory has been successfully streamed.
+
+Recall that the script will be triggered with a single command line parameter, where `$1` is the path to the local RUN directory  that has been successfully streamed to DNAnexus.
 
 ```
 #!/bin/bash
@@ -96,7 +101,35 @@ Actions performed by Role
 The dx-streaming-upload role perform, broadly, the following:
 
 1. Installs the DNAnexus tools [dx-toolkit](https://wiki.dnanexus.com/Downloads#DNAnexus-Platform-SDK) and [upload agent](https://wiki.dnanexus.com/Downloads#Upload-Agent) on the remote machine.
-2. Set up a CRON job that monitors a given directory for RUN directories periodically, and streams the RUN directory into a DNAnexus project, triggering an app(let) upon successful upload of the directory and a local script (when specified by user)
+2. Set up a CRON job that monitors a given directory for RUN directories periodically, and streams the RUN directory into a DNAnexus project, triggering an app(let)/workflow upon successful upload of the directory and a local script (when specified by user)
+
+Downstream analysis
+-------------------
+The dx-streaming-upload role can optionally trigger a DNAnexus applet/workflow upon completion of incremental upload. The desired DNAnexus applet or workflow can be specified (at a per `monitored_user` basis) using the Ansible variables `applet` or `workflow` respectively (mutually exclusive, see explanantion of variables for general explanations).
+
+More information about DNAnexus workflows can be found at the [DNAnexus wiki page](https://wiki.dnanexus.com/API-Specification-v1.0.0/Running-Analyses)
+
+### Authorization
+The downstream analysis (applet or workflow) will be launched in the project into which the RUN directory is uploaded to (`project`). The DNAnexus user / associated `dx_token` or `dx_user_token` must have at least `CONTRIBUTE` access to the aforementioned project for the analysis to be launched successfully. Computational resources are billable and will be billed to the bill-to of the corresponding project.
+
+### Input and Options
+The specified applet/workflow will be triggered using the `run` [API](http://autodoc.dnanexus.com/bindings/python/current/dxpy_apps.html?highlight=applet%20run#dxpy.bindings.dxapplet.DXExecutable.run) in the dxpy tool suite.
+
+For an applet, the `executable_input` hash to the `run` command will be prepopulated with the key-value pair {"`upload_sentinel_record`": `$record_id`} where `$record_id` is the DNAnexus file-id of the sentinel record generated for the uploaded RUN directory (see section titled **Files generated**).
+
+For a workflow the `executable_input` hash will be prepoluated with the key-value pair {"`0.upload_sentinel_record`": `$record_id`} where `$record_id` is the DNAnexus file-id of the sentinel record generated for the uploaded RUN directory (see section titled **Files generated**).
+
+**It is the user's responsibility to ensure that the specified applet/workflow has an appropriate input contract which accepts a DNAnexus record with the input name of `upload_sentinel_record`**
+
+Additional input/options can be specified, statically using the Ansible variable `downstream_input`. This should be provided as a JSON string, parsable, at the top level, as a Python dict of `str` to `str`. 
+
+Example of a properly formatted `downstream_input` for an `applet`
+- ```{"input_name1": "value1", "input_name2": "value2"}```
+
+Example of a properly formatted `downstream_input` for a `workflow`
+- ```{"0.step0_input": "value1", "1.step2_input": "value2"})```
+
+*Note the numerical index prefix necessary when specifying input for an `workflow`, which disambiguates which step in the workflow an input is targeted to*
 
 Files generated
 ----------------
@@ -133,7 +166,9 @@ project
             │  ...
 ```
 
-The `reads` folder (and subfolders) will only be created if `downstream_applet` is specified.
+The `reads` folder (and subfolders) will only be created if `applet` is specified.
+The `analyses` folder (and subfolder) will only be created if `workflow` is specified.
+
 `RunInfo.xml` and `SampleSheet.csv` will only be upladed if they can be located within the root of the local RUN directory.
 
 Logging, Notification and Error Handling
