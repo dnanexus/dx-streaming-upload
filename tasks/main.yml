@@ -118,6 +118,13 @@
   become_user: "{{ item.username }}"
   when: item.n_upload_threads is defined
 
+- name: Change specification for downstream input
+  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^downstream_input:.*' line='downstream_input: \'{{ item.downstream_input }}\''"
+  with_items: "{{ monitored_users }}"
+  become: yes
+  become_user: "{{ item.username }}"
+  when: item.downstream_input is defined
+
 # Create lock file
 - name: Create lock file for CRON to wait on using flock
   file: path=/var/lock/dnanexus_uploader.lock state=touch

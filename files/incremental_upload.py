@@ -9,6 +9,7 @@ import xml.etree.ElementTree as ET
 import time
 import dxpy
 import argparse
+import json
 
 # Uploads an Illumina run directory (HiSeq 2500, HiSeq X, NextSeq)
 # If for use with a MiSeq, users MUST change the config files to include and NOT specify the -l argument
@@ -83,7 +84,11 @@ def parse_args():
             "success upload. A single command line argument (corresponding to the " +
             "path of the RUN directory will be passed to the executable. Note: " +
             "script will be run after the applet has been executed.")
-
+    parser.add_argument("-N", "--downstream-input", metavar="<JSON string>",
+            help="A JSON string specifying downstream inputs / settings for the " +
+            "DNAnexus applet or workflow run after successful upload. Note that " +
+            "the input upload_sentinel_record for applet or 0.upload_sentinel_record " +
+            "will be overwritten programmatically, even if provided by user.")
 
     # Mutually exclusive inputs for verbose loggin (UA) vs dxpy upload
     upload_debug_group = parser.add_mutually_exclusive_group(required=False)
@@ -418,6 +423,23 @@ def main():
 
     print_stderr("Run %s successfully streamed!" % (run_id))
 
+    downstream_input = {}
+    if args.downstream_input:
+        try:
+            input_dict = json.loads(args.downstream_input)
+        except ValueError as e:
+            raise_error("Failed to read downstream input as JSON string. %s. %s" %(args.downstream_input, e))
+
+        if not isinstance(input_dict, dict):
+            raise_error("Expected a dict for downstream input. Got %s." %input_dict)
+
+        for k, v in input_dict.items():
+            if not ((isinstance(k, str) or isinstance(k, basestring)) and
+                    (isinstance(v, str) or isinstance(v, basestring))):
+                    raise_error("Expected string key value pairs for downstream input. Got %s %s" %(k, v))
+
+            downstream_input[k] = v
+
     if args.applet:
         # project verified in check_input, assuming no change
         project = dxpy.get_handler(args.project)
@@ -443,8 +465,11 @@ def main():
             # Decide on job name (<executable>-<run_id>)
             job_name = applet.title + "-" + run_id
 
+            # Overwite upload_sentinel_record input of applet to the record of inc upload
+            downstream_input["upload_sentinel_record"] = dxpy.dxlink(record)
+
             # Run specified applet
-            job = applet.run({"upload_sentinel_record": dxpy.dxlink(record)},
+            job = applet.run(downstream_input,
                         folder=reads_target_folder,
                         project=args.project,
                         name=job_name)
@@ -452,7 +477,8 @@ def main():
             print_stderr("Initiated job %s from applet %s for lane %s" %(job, args.applet, lane))
     # Close if args.applet
 
-    if args.workflow:
+    # args.workflow and args.applet are mutually exclusive
+    elif args.workflow:
         # project verified in check_input, assuming no change
         project = dxpy.get_handler(args.project)
 
@@ -477,8 +503,11 @@ def main():
             # Decide on job name (<executable>-<run_id>)
             job_name = workflow.title + "-" + run_id
 
+            # Overwite upload_sentinel_record input of applet to the record of inc upload
+            downstream_input["0.upload_sentinel_record"] = dxpy.dxlink(record)
+
             # Run specified applet
-            job = workflow.run({"0.upload_sentinel_record": dxpy.dxlink(record)},
+            job = workflow.run(downstream_input,
                         folder=analyses_target_folder,
                         project=args.project,
                         name=job_name)
