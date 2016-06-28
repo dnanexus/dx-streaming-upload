@@ -168,6 +168,12 @@ def parse_args():
                         '\n' + '--min-tar-size. DEFAULT=75 MB' +
                         '\n' +
                         '\n')
+    parser.add_argument('--upload-threads', '-u', type=int, metavar='<int>',
+                        help='Number of upload threads launched by Upload Agent' +
+                        '\n' + '(Decrease to improve stability in low-bandwidth' +
+                        '\n' + 'connections), DEFAULT=8' +
+                        ']n' +
+                        '\n')
     parser.add_argument('--include-patterns', '-i', metavar='<regex>', nargs='*',
                         help='An optional list of regex patterns to search for.' +
                         '\n' + 'If 1 or more regex patterns are given, then' +
@@ -445,11 +451,13 @@ def upload_tar_files(log, args):
                 dx_file = dxpy.upload_local_file(tar_file, project=tar_destination_project, folder=tar_destination_folder)
                 dx_file_id = dx_file.get_id()
             else:
+                opts=''
+                if args.upload_threads:
+                    opts += '-u %d ' %args.upload_threads
                 if args.verbose:
-                    verbose_flag = '--verbose'
-                else:
-                    verbose_flag = ''
-                ua_command = "ua --project %s --folder %s --do-not-compress --wait-on-close --progress %s %s --chunk-size 25M" % (tar_destination_project, tar_destination_folder, verbose_flag, tar_file)
+                    opts += '--verbose '
+
+                ua_command = "ua --project %s --folder %s --do-not-compress --wait-on-close --progress %s %s --chunk-size 25M" % (tar_destination_project, tar_destination_folder, opts, tar_file)
                 print >> sys.stderr, ua_command
                 try:
                     dx_file_id = subprocess.check_output(ua_command, shell=True)
@@ -486,10 +494,10 @@ def remove_tar_files(log, args):
             log['tar_files'][tar_file]['timestamps']['remove_start'] = remove_start
             log['tar_files'][tar_file]['timestamps']['remove_end'] = remove_end
             log = update_log(log, args)
-    
+
     if remove_count == 0:
         print >> sys.stderr, "\tNo files removed..."
-    
+
     return log
 
 def print_all_file_ids(log):
@@ -553,7 +561,7 @@ def main():
         log = create_tar_file(tar, log, args)
         log = upload_tar_files(log, args)
         log = remove_tar_files(log, args)
-    
+
     # Run through upload & remove in case last invocation was interrupted
     if len(tars_to_upload) == 0:
         log = upload_tar_files(log, args)

@@ -3,6 +3,7 @@
 import argparse
 import dxpy
 import glob
+import json
 import multiprocessing
 import os
 import subprocess as sub
@@ -28,7 +29,9 @@ CONFIG_DEFAULT = {
     "min_interval": 1800,
     "n_retries": 3,
     "run_length": "24h",
-    "n_seq_intervals": 2
+    "n_seq_intervals": 2,
+    "n_upload_threads": 8,
+    "downstream_input": ''
 }
 
 # Base folder in which the RUN folders are deposited
@@ -84,6 +87,9 @@ def parse_args():
     optionalNamed.add_argument('--script', '-s',
                         help='Script to execute after successful upload of the RUN folder, ' +
                               'see incremental_upload.py',
+                        required=False)
+    optionalNamed.add_argument('--downstream-input', '-N',
+                        help='Input for DNAnexus applet/workflow, specified as a JSON string',
                         required=False)
 
     downstreamAnalysis = parser.add_mutually_exclusive_group(required=False)
@@ -153,6 +159,12 @@ def check_config_fields(config):
             except OSError, e:
                 invalid_config("Specified {0} ({1}) could not be created".format(r_dir, config[r_dir]))
 
+    input_json = config["downstream_input"]
+    if input_json:
+        try:
+            _ = json.loads(input_json)
+        except ValueError as e:
+            invalid_config("JSON parse error for downstream input: {0}".format(input_json))
     return config
 
 def get_run_folders(base_dir):
@@ -334,6 +346,7 @@ def _trigger_streaming_upload(folder, config):
                "-R", config['n_retries'],
                "-D", config['run_length'],
                "-I", config['n_seq_intervals'],
+               "-u", config['n_upload_threads'],
                "--verbose"]
 
     if 'applet' in config:
@@ -345,6 +358,8 @@ def _trigger_streaming_upload(folder, config):
     if 'script' in config:
         command += ["-s", config['script']]
 
+    if 'downstream_input' in config:
+        command += ["--downstream-input", config['downstream_input']]
     # Ensure all numerical values are formatted as string
     command = [str(word) for word in command]
 

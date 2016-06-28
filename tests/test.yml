@@ -8,6 +8,7 @@
           - ~/runs
         run_length: 24h
         n_seq_intervals: 2
+        n_retries: 5
       - username: root
         monitored_directories:
           - ~/home/root/runs
