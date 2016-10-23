@@ -151,7 +151,7 @@
     user="{{ item.0.username }}"
     job="flock -w 5 /var/lock/dnanexus_uploader.lock bash -ex -c 'source /opt/dx-toolkit/environment; PATH=/opt/dnanexus-upload-agent:$PATH; python /opt/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ item.1 }} {{ \'-A\' if \'applet\' in item.0 else \'\' }} {{ item.0.applet if \'applet\' in item.0 else \'\'}} {{ \'-w\' if \'workflow\' in item.0 else \'\' }} {{ item.0.workflow if \'workflow\' in item.0 else \'\'}} {{ \'-s\' if \'script\' in item.0 else \'\' }} {{ item.0.script if \'script\' in item.0 else \'\'}} -v > ~/monitor.log 2>&1' > ~/dx-stream_cron.log 2>&1"
   with_subelements:
-        - monitored_users
+        - "{{ monitored_users }}"
         - monitored_directories
   become: yes
   become_user: "{{ item.0.username }}"
@@ -165,7 +165,7 @@
     user="{{ item.0.username }}"
     job="flock -w 5 /var/lock/dnanexus_uploader.lock bash -ex -c 'source /opt/dx-toolkit/environment; PATH=/opt/dnanexus-upload-agent:$PATH; python /opt/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ item.1 }} {{ \'-A\' if \'applet\' in item.0 else \'\' }} {{ item.0.applet if \'applet\' in item.0 else \'\'}} {{ \'-w\' if \'workflow\' in item.0 else \'\' }} {{ item.0.workflow if \'workflow\' in item.0 else \'\'}} {{ \'-s\' if \'script\' in item.0 else \'\' }} {{ item.0.script if \'script\' in item.0 else \'\'}} -v > ~/monitor.log 2>&1' > ~/dx-stream_cron.log 2>&1"
   with_subelements:
-        - monitored_users
+        - "{{ monitored_users }}"
         - monitored_directories
   become: yes
   become_user: "{{ item.0.username }}"
