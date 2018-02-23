@@ -28,3 +28,12 @@ n_seq_intervals: 2
 # of successful uploads in spite of network disruptions
 # Corresponds to the -u option in UA and incremental_upload.py
 n_upload_threads: 8
+
+# the minimum size needed to upload a chunk (in MB)
+min_size: 500
+
+# min sync check interval (in seconds)
+min_interval: 900
+
+# number of concurrent uploads
+n_streaming_threads: 1
