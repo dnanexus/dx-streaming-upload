@@ -31,7 +31,8 @@ CONFIG_DEFAULT = {
     "run_length": "24h",
     "n_seq_intervals": 2,
     "n_upload_threads": 8,
-    "downstream_input": ''
+    "downstream_input": '',
+    "n_streaming_threads":1
 }
 
 # Base folder in which the RUN folders are deposited
@@ -46,11 +47,6 @@ RUN_UPLOAD_DEST = "/"
 # Name of the sub-folder that corresponds to where the
 # run directory tarballs and upload sentinel file are stored
 REMOTE_RUN_FOLDER = "runs"
-
-# Number of incremental_upload threads to execute concurrently
-# It is not recommended to open too many upload thread, since each
-# upload is already optimized to maximize upload bandwidth
-N_STREAMING_THREADS = 1
 
 def parse_args():
     """ Parse command line arguments """
@@ -374,7 +370,7 @@ def _trigger_streaming_upload(folder, config):
 def trigger_streaming_upload(folders, config):
     """ Open a thread pool of size N_STREAMING_THREADS
     and trigger streaming upload for all unsynced and incomplete folders"""
-    pool = multiprocessing.Pool(processes=N_STREAMING_THREADS)
+    pool = multiprocessing.Pool(processes=config["n_streaming_threads"])
     for folder in folders:
         print "Adding folder {0} to pool".format(folder)
         pool.apply_async(_trigger_streaming_upload, args=(folder, config)).get()
