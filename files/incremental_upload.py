@@ -352,6 +352,15 @@ def main():
                     folder=lane["remote_folder"], parents=True,
                     name=lane["record_name"], properties=properties)
 
+        # upload SampleSheet and RunInfo here, before uploading any data.
+
+        record = lane["dxrecord"]
+        properties = record.get_properties()
+        lane["runinfo_file_id"]     = upload_single_file(args.run_dir + "/RunInfo.xml", args.project,
+                                         lane["remote_folder"], properties)
+        lane["samplesheet_file_id"] = upload_single_file(args.run_dir + "/SampleSheet.csv", args.project,
+                                         lane["remote_folder"], properties)
+
     if done_count == len(lane_info):
         print_stderr("EXITING: All lanes already uploaded")
         sys.exit(1)
@@ -392,12 +401,8 @@ def main():
         file_ids = run_sync_dir(lane, args, finish=True)
         record = lane["dxrecord"]
         properties = record.get_properties()
-        log_file_id = upload_single_file(lane["log_path"], args.project,
+        lane["log_file_id"] = upload_single_file(lane["log_path"], args.project,
                                          lane["remote_folder"], properties)
-        runinfo_file_id = upload_single_file(args.run_dir + "/RunInfo.xml", args.project,
-                                             lane["remote_folder"], properties)
-        samplesheet_file_id = upload_single_file(args.run_dir + "/SampleSheet.csv", args.project,
-                                                 lane["remote_folder"], properties)
 
         for file_id in file_ids:
             dxpy.get_handler(file_id, project=args.project).set_properties(properties)
@@ -410,12 +415,12 @@ def main():
             }
 
         # ID to singly uploaded file (when uploaded successfully)
-        if log_file_id:
-            details.update({'log_file_id': log_file_id})
-        if runinfo_file_id:
-            details.update({'runinfo_file_id': runinfo_file_id})
-        if samplesheet_file_id:
-            details.update({'samplesheet_file_id': samplesheet_file_id})
+        if lane.get("log_file_id"):
+            details.update({'log_file_id': lane["log_file_id"]})
+        if lane.get("runinfo_file_id"):
+            details.update({'runinfo_file_id': lane["runinfo_file_id"]})
+        if lane.get("samplesheet_file_id"):
+            details.update({'samplesheet_file_id': lane["samplesheet_file_id"]})
 
         record.set_details(details)
 
