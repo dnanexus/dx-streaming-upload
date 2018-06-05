@@ -9,7 +9,7 @@ Instruments that this module support include the Illumina MiSeq, NextSeq, HiSeq-
 
 Role Variables
 --------------
-- `mode`: `{deploy, debug}` In the *deploy* mode, monitoring cron job is triggered every minute; in *deploy mode*, monitoring cron job is triggered every hour.
+- `mode`: `{deploy, debug}` In the *debug* mode, monitoring cron job is triggered every minute; in *deploy mode*, monitoring cron job is triggered every hour.
 - `upload_project`: ID of the DNAnexus project that the RUN folders should be uploaded to. The ID is of the form `project-BpyQyjj0Y7V0Gbg7g52Pqf8q`
 - `dx_token`: API token for the DNAnexus user to be used for data upload. The API token should give minimally UPLOAD access to the `{{ upload project }}`, or CONTRIBUTE access if `downstream_applet` is specified. Instructions for generating a API token can be found at [DNAnexus wiki](https://wiki.dnanexus.com/UI/API-Tokens). This value is overriden by `dx_user_token` in `monitored_users`.
 - `monitored_users`: This is a list of objects, each representing a remote user, with its set of incremental upload parameters. For each `monitored_user`, the following values are accepted
