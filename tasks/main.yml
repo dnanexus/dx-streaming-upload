@@ -77,49 +77,49 @@
 
 # Edit config file to customize to user-provided parameters
 - name: Change config file's local TAR directory
-  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^tmp_dir:.*' line='tmp_dir: \'{{ item.local_log_directory }}\''"
+  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^tmp_dir:.*' line='tmp_dir: \"{{ item.local_tar_directory }}\"'"
   with_items: "{{ monitored_users }}"
   become: yes
   become_user: "{{ item.username }}"
   when: item.local_tar_directory is defined
 
 - name: Change config file's local LOG directory
-  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^log_dir:.*' line='log_dir: \'{{ item.local_tar_directory }}\''"
+  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^log_dir:.*' line='log_dir: \"{{ item.local_log_directory }}\"'"
   with_items: "{{ monitored_users }}"
   become: yes
   become_user: "{{ item.username }}"
   when: item.local_log_directory is defined
 
 - name: Change anticipated run duration
-  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^run_length:.*' line='run_length: \'{{ item.run_length }}\''"
+  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^run_length:.*' line='run_length: \"{{ item.run_length }}\"'"
   with_items: "{{ monitored_users }}"
   become: yes
   become_user: "{{ item.username }}"
   when: item.run_length is defined
 
 - name: Change multiplier of run_times to wait
-  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^n_seq_intervals:.*' line='n_seq_intervals: \'{{ item.n_seq_intervals }}\''"
+  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^n_seq_intervals:.*' line='n_seq_intervals: \"{{ item.n_seq_intervals }}\"'"
   with_items: "{{ monitored_users }}"
   become: yes
   become_user: "{{ item.username }}"
   when: item.n_seq_intervals is defined
 
 - name: Change number of retries for incremental_upload
-  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^n_retries:.*' line='n_retries: \'{{ item.n_retries }}\''"
+  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^n_retries:.*' line='n_retries: \"{{ item.n_retries }}\"'"
   with_items: "{{ monitored_users }}"
   become: yes
   become_user: "{{ item.username }}"
   when: item.n_retries is defined
 
 - name: Change number of upload threads for UA
-  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^n_upload_threads:.*' line='n_upload_threads: \'{{ item.n_upload_threads }}\''"
+  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^n_upload_threads:.*' line='n_upload_threads: \"{{ item.n_upload_threads }}\"'"
   with_items: "{{ monitored_users }}"
   become: yes
   become_user: "{{ item.username }}"
   when: item.n_upload_threads is defined
 
 - name: Change specification for downstream input
-  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^downstream_input:.*' line='downstream_input: \'{{ item.downstream_input }}\''"
+  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^downstream_input:.*' line='downstream_input: \"{{ item.downstream_input }}\"'"
   with_items: "{{ monitored_users }}"
   become: yes
   become_user: "{{ item.username }}"
@@ -192,3 +192,4 @@
   become: yes
   become_user: "{{ item.username }}"
   when: mode == "deploy"
+
