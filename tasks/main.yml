@@ -126,21 +126,21 @@
   when: item.downstream_input is defined
 
 - name: Change specification for minimum upload size
-  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^min_size:.*' line='min_size: \'{{ item.min_size }}\''"
+  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^min_size:.*' line='min_size: \"{{ item.min_size }}\"'"
   with_items: "{{ monitored_users }}"
   become: yes
   become_user: "{{ item.username }}"
   when: item.min_size is defined
 
 - name: Change specification for minimum sync interval
-  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^min_interval:.*' line='min_interval: \'{{ item.min_interval }}\''"
+  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^min_interval:.*' line='min_interval: \"{{ item.min_interval }}\"'"
   with_items: "{{ monitored_users }}"
   become: yes
   become_user: "{{ item.username }}"
   when: item.min_interval is defined
 
 - name: Change specification for number of concurrent uploads
-  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^n_streaming_threads:.*' line='n_streaming_threads: \'{{ item.n_streaming_threads }}\''"
+  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^n_streaming_threads:.*' line='n_streaming_threads: \"{{ item.n_streaming_threads }}\"'"
   with_items: "{{ monitored_users }}"
   become: yes
   become_user: "{{ item.username }}"
