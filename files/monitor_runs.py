@@ -370,7 +370,7 @@ def _trigger_streaming_upload(folder, config):
 def trigger_streaming_upload(folders, config):
     """ Open a thread pool of size N_STREAMING_THREADS
     and trigger streaming upload for all unsynced and incomplete folders"""
-    pool = multiprocessing.Pool(processes=config["n_streaming_threads"])
+    pool = multiprocessing.Pool(processes=int(config["n_streaming_threads"]))
     for folder in folders:
         print "Adding folder {0} to pool".format(folder)
         pool.apply_async(_trigger_streaming_upload, args=(folder, config)).get()
