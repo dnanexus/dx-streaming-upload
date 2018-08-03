@@ -1,7 +1,7 @@
 ---
 # Install Dx-toolkit
 - name: Get DX tarball
-  unarchive: src=https://wiki.dnanexus.com/images/files/dx-toolkit-current-ubuntu-14.04-amd64.tar.gz dest=/opt/ copy=no
+  unarchive: src=https://wiki.dnanexus.com/images/files/dx-toolkit-current-ubuntu-14.04-amd64.tar.gz remote_src=yes dest=/opt/
 
 # http://stackoverflow.com/questions/22256884/not-possible-to-source-bashrc-with-ansible
 - name: check dx version
@@ -119,28 +119,31 @@
   when: item.n_upload_threads is defined
 
 - name: Change specification for downstream input
-  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^downstream_input:.*' line='downstream_input: \"{{ item.downstream_input }}\"'"
+  lineinfile: # escaping properly is important for this as downstream_input is/can be a JSON obj
+    dest: ~/dnanexus/config/monitor_runs.config
+    regexp: '^downstream_input:.*' 
+    line: "downstream_input: '{{ item.downstream_input }}'"
   with_items: "{{ monitored_users }}"
   become: yes
   become_user: "{{ item.username }}"
   when: item.downstream_input is defined
 
 - name: Change specification for minimum upload size
-  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^min_size:.*' line='min_size: \'{{ item.min_size }}\''"
+  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^min_size:.*' line='min_size: \"{{ item.min_size }}\"'"
   with_items: "{{ monitored_users }}"
   become: yes
   become_user: "{{ item.username }}"
   when: item.min_size is defined
 
 - name: Change specification for minimum sync interval
-  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^min_interval:.*' line='min_interval: \'{{ item.min_interval }}\''"
+  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^min_interval:.*' line='min_interval: \"{{ item.min_interval }}\"'"
   with_items: "{{ monitored_users }}"
   become: yes
   become_user: "{{ item.username }}"
   when: item.min_interval is defined
 
 - name: Change specification for number of concurrent uploads
-  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^n_streaming_threads:.*' line='n_streaming_threads: \'{{ item.n_streaming_threads }}\''"
+  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^n_streaming_threads:.*' line='n_streaming_threads: \"{{ item.n_streaming_threads }}\"'"
   with_items: "{{ monitored_users }}"
   become: yes
   become_user: "{{ item.username }}"
