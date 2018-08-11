@@ -1,7 +1,10 @@
 ---
 # Install Dx-toolkit
 - name: Get DX tarball
-  unarchive: src=https://wiki.dnanexus.com/images/files/dx-toolkit-current-ubuntu-14.04-amd64.tar.gz remote_src=yes dest=/opt/
+  unarchive: 
+    src: https://wiki.dnanexus.com/images/files/dx-toolkit-current-ubuntu-14.04-amd64.tar.gz 
+    remote_src: yes 
+    dest: /opt/
 
 # http://stackoverflow.com/questions/22256884/not-possible-to-source-bashrc-with-ansible
 - name: check dx version
@@ -19,7 +22,10 @@
   file: path=/opt/dnanexus-upload-agent state=directory mode=0755
 
 - name: Download and unzip UA tarball
-  unarchive: src=https://wiki.dnanexus.com/images/files/dnanexus-upload-agent-1.5.10-linux.tar.gz dest=/opt/dnanexus-upload-agent copy=no
+  unarchive: 
+    src: https://wiki.dnanexus.com/images/files/dnanexus-upload-agent-1.5.10-linux.tar.gz 
+    dest: /opt/dnanexus-upload-agent
+    copy: no
 
 - name: Move ua executable to un-versioned folder location for ease of reference
   shell: mv /opt/dnanexus-upload-agent/*/* /opt/dnanexus-upload-agent/
@@ -170,10 +176,10 @@
 
 # Set up CRON job for monitoring
 - name: set up CRON job to run every minute in debug mode with downstream applet
-  cron: >
-    name="DNAnexus monitor runs (debug)"
-    user="{{ item.0.username }}"
-    job="flock -w 5 /var/lock/dnanexus_uploader.lock bash -ex -c 'source /opt/dx-toolkit/environment; PATH=/opt/dnanexus-upload-agent:$PATH; python /opt/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ item.1 }} {{ \'-A\' if \'applet\' in item.0 else \'\' }} {{ item.0.applet if \'applet\' in item.0 else \'\'}} {{ \'-w\' if \'workflow\' in item.0 else \'\' }} {{ item.0.workflow if \'workflow\' in item.0 else \'\'}} {{ \'-s\' if \'script\' in item.0 else \'\' }} {{ item.0.script if \'script\' in item.0 else \'\'}} -v > ~/monitor.log 2>&1' > ~/dx-stream_cron.log 2>&1"
+  cron:
+    name: "DNAnexus monitor runs (debug)"
+    user: "{{ item.0.username }}"
+    job: "flock -w 5 /var/lock/dnanexus_uploader.lock bash -ex -c 'source /opt/dx-toolkit/environment; PATH=/opt/dnanexus-upload-agent:$PATH; python /opt/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ item.1 }} {{ \'-A\' if \'applet\' in item.0 else \'\' }} {{ item.0.applet if \'applet\' in item.0 else \'\'}} {{ \'-w\' if \'workflow\' in item.0 else \'\' }} {{ item.0.workflow if \'workflow\' in item.0 else \'\'}} {{ \'-s\' if \'script\' in item.0 else \'\' }} {{ item.0.script if \'script\' in item.0 else \'\'}} -v > ~/monitor.log 2>&1' > ~/dx-stream_cron.log 2>&1"
   with_subelements:
         - "{{ monitored_users }}"
         - monitored_directories
@@ -183,11 +189,11 @@
 
 
 - name: set up CRON job to run every hour in deploy mode with downstream applet
-  cron: >
-    name="DNAnexus monitor runs (deploy)"
-    special_time=hourly
-    user="{{ item.0.username }}"
-    job="flock -w 5 /var/lock/dnanexus_uploader.lock bash -ex -c 'source /opt/dx-toolkit/environment; PATH=/opt/dnanexus-upload-agent:$PATH; python /opt/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ item.1 }} {{ \'-A\' if \'applet\' in item.0 else \'\' }} {{ item.0.applet if \'applet\' in item.0 else \'\'}} {{ \'-w\' if \'workflow\' in item.0 else \'\' }} {{ item.0.workflow if \'workflow\' in item.0 else \'\'}} {{ \'-s\' if \'script\' in item.0 else \'\' }} {{ item.0.script if \'script\' in item.0 else \'\'}} -v > ~/monitor.log 2>&1' > ~/dx-stream_cron.log 2>&1"
+  cron:
+    name: "DNAnexus monitor runs (deploy)"
+    special_time: hourly
+    user: "{{ item.0.username }}"
+    job: "flock -w 5 /var/lock/dnanexus_uploader.lock bash -ex -c 'source /opt/dx-toolkit/environment; PATH=/opt/dnanexus-upload-agent:$PATH; python /opt/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ item.1 }} {{ \'-A\' if \'applet\' in item.0 else \'\' }} {{ item.0.applet if \'applet\' in item.0 else \'\'}} {{ \'-w\' if \'workflow\' in item.0 else \'\' }} {{ item.0.workflow if \'workflow\' in item.0 else \'\'}} {{ \'-s\' if \'script\' in item.0 else \'\' }} {{ item.0.script if \'script\' in item.0 else \'\'}} -v > ~/monitor.log 2>&1' > ~/dx-stream_cron.log 2>&1"
   with_subelements:
         - "{{ monitored_users }}"
         - monitored_directories
@@ -197,10 +203,10 @@
 
 # Clean up CRON job in alternate mode
 - name: delete deploy mode CRON job if debug mode set
-  cron: >
-    name="DNAnexus monitor runs (deploy)"
-    user="{{ item.username }}"
-    state=absent
+  cron:
+    name: "DNAnexus monitor runs (deploy)"
+    user: "{{ item.username }}"
+    state: absent
   with_items: "{{ monitored_users }}"
   become: yes
   become_user: "{{ item.username }}"
@@ -208,12 +214,11 @@
 
 
 - name: delete debug mode CRON job if deploy mode set
-  cron: >
-    name="DNAnexus monitor runs (debug)"
-    user="{{ item.username }}"
-    state=absent
+  cron:
+    name: "DNAnexus monitor runs (debug)"
+    user: "{{ item.username }}"
+    state: absent
   with_items: "{{ monitored_users }}"
   become: yes
   become_user: "{{ item.username }}"
   when: mode == "deploy"
-
