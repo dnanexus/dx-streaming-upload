@@ -1,11 +1,12 @@
-dx-streaming-upload
+
+# dx-streaming-upload
 =========
 
 [![Build Status](https://travis-ci.org/dnanexus-rnd/dx-streaming-upload.svg?branch=master)](https://travis-ci.org/dnanexus-rnd/dx-streaming-upload)
 
 The dx-streaming-upload Ansible role packages the streaming upload module for increamentally uploading a RUN directory from an Illumina sequencer onto the DNAnexus platform.
 
-Instruments that this module support include the Illumina MiSeq, NextSeq, HiSeq-2500, HiSeq-4000 and HiSeq-X.
+Instruments that this module support include the Illumina MiSeq, NextSeq, HiSeq-2500, HiSeq-4000, HiSeq-X and NovaSeq.
 
 Role Variables
 --------------
@@ -34,7 +35,7 @@ Python 2.7 is needed. This program is not compatible with Python 3.X.
 
 Minimal Ansible version: 2.0.
 
-This program is intended for Ubuntu 14.04 (Trusty) and has been tested on the 15.10 (Wily) release. Most features should work on a Ubuntu 12.04 (Precise) system, but this has not been tested to date.
+This program is intended for Ubuntu 14.04 (Trusty) and has been tested on the 15.10 (Wily) release. 
 
 
 Requirements
@@ -45,7 +46,8 @@ More information and tutorials about the DNAnexus platform can be found at the [
 
 The `remote-user` that the role is run against must possess **READ** access to `monitored_folder` and **WRITE** access to disk for logging and temporary storage of tar files. These are typically stored under the `remote-user's` home directory, and is specified in the file `monitor_run_config.template` or as given explicitly by the variables `local_tar_directory` and `local_log_directory`.
 
-The machine that this role is deployed to should have at least 500Mb of free RAM available for allocation by the upload module during the time of upload.
+The machine that this role is deployed to should have sufficient free memory depending on the throughput of the sequencing instrument. For Novaseq and HiSeqs we recommend a machine with atleast 8 cores, 32 GB of RAM, and 500GB - 1TB of storage. 
+
 
 Example Playbook
 ----------------
