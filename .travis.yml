@@ -11,8 +11,7 @@ addons:
 
 install:
   # Install ansible
-  # TODO: un-pin ansible version once https://github.com/ansible/ansible-modules-core/commit/531e09ce167c44387fc9c6505dd0453a7251b8f9 is available via pip
-  - pip install ansible==2.1.1
+  - pip install ansible==2.6.2
 
   # Check ansible version
   - ansible --version
