@@ -8,7 +8,7 @@
     timeout: 600
 
 - name: unpack DX tarball
-  unarchive: src=/opt/dx-toolkit-current-ubuntu-16.04-amd64.tar.gz dest=/opt/
+  unarchive: src=/opt/dx-toolkit-current-ubuntu-16.04-amd64.tar.gz dest=/opt/ remote_src=yes
 
 - name: Remove DX tarball
   file:
@@ -38,7 +38,7 @@
     timeout: 600
 
 - name: unpack UA tarball
-  unarchive: src=/opt/dnanexus-upload-agent-current-linux.tar.gz dest=/opt/dnanexus-upload-agent
+  unarchive: src=/opt/dnanexus-upload-agent-current-linux.tar.gz dest=/opt/dnanexus-upload-agent remote_src=yes
 
 - name: Remove UA tarball
   file:
