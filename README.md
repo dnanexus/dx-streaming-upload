@@ -38,7 +38,8 @@ The machine that this role is deployed to should have sufficient free memory dep
 ## Installation
 ##### Using Ubuntu (tested on 14.04/16.04)
 Create a working directory, to do so, please select the /opt folder as working directory (in our case we will use ~/dx)
-```mkdir ~/dx 
+```
+mkdir ~/dx
 cd ~/dx
 ```
 Install prerequisite -- git
@@ -49,7 +50,7 @@ Install prerequisite -- wget
 ```
 sudo apt-get install wget
 ```
-Enable EPEL Repository for RH 7.* or universe repositories for Ubuntu
+Enable universe repositories
 ```
 sudo apt-get install software-properties-common
 sudo apt-add-repository universe
@@ -106,47 +107,48 @@ Create dx-upload-play.yml file inside the dx-streaming-folder
 ```
 Here are the instructions for token generation.
 Launch the ansible-playbook 
-sudo ansible-playbook dx-streaming-upload/dx-upload-play.yml 
+```sudo ansible-playbook dx-streaming-upload/dx-upload-play.yml ```
 Give the right permission to cron
-sudo cron (U)
+```sudo cron```
 ##### Using RedHat (tested on)
 Create a working directory, to do so, please select the /opt folder as working directory (in our case we will use ~/dx)
-```mkdir ~/dx 
-cd ~/dx```
-Install prerequisite such as git, wget etc
-```sudo yum install git -y (Red Hat)
-
-``` 
-sudo yum install wget -y (RH)
-sudo apt-get install wget (U)
-Enable EPEL Repository for RH 7.* or universe repositories for Ubuntu
-wget http://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm (RH)
-sudo rpm -ivh epel-release-latest-7.noarch.rpm (RH)
-sudo apt-get install software-properties-common (U)
-sudo apt-add-repository universe (U)
-sudo apt-get update (U)
-pip
-sudo yum install python-pip -y (RH)
-curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py (U)
-sudo apt install python2.7
+```
+mkdir ~/dx 
+cd ~/dx
+```
+Install prerequisite -- git
+```
+sudo yum install git -y
+```
+Install prerequisite -- wget
+```
+sudo yum install wget -y
+```
+Enable EPEL Repository for RH 7.*
+```
+wget http://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm 
+sudo rpm -ivh epel-release-latest-7.noarch.rpm 
+Install prerequisite -- pip and some essential packages
+sudo yum install python-pip -y 
 sudo cp /usr/bin/python2.7 /usr/bin/python
-sudo python get-pip.py (U)
-pip packages
 sudo pip install -U setuptools 
 sudo pip install packaging
 make
-sudo yum install gcc gcc-c++ kernel-devel -y (RH)
-sudo apt-get install build-essential -y (U)
+sudo yum install gcc gcc-c++ kernel-devel -y
+```
 Install ansible
+```
 git clone https://github.com/ansible/ansible.git
 cd ansible/
 make
 sudo make install
-Download test sequencing data in /opt/seq folder
--
+```
+Please download or move some test sequencing data in /opt/seq folder
 Clone streaming repo
+```
 cd ~/dx
 git clone https://github.com/dnanexus-rnd/dx-streaming-upload.git
+```
 Create dx-upload-play.yml file inside the dx-streaming-folder
 `dx-upload-play.yml`
 ```YAML
@@ -177,12 +179,8 @@ Here are the [instructions]() for token generation.
 Launch the ansible-playbook 
 ```sudo ansible-playbook dx-streaming-upload/dx-upload-play.yml 
 ```
-Give the right permission to cron
-```sudo cron (U)
-```
-# Examples
-Role Variables
---------------
+## Examples
+##### Role Variables
 - `mode`: `{deploy, debug}` In the *debug* mode, monitoring cron job is triggered every minute; in *deploy mode*, monitoring cron job is triggered every hour.
 - `upload_project`: ID of the DNAnexus project that the RUN folders should be uploaded to. The ID is of the form `project-BpyQyjj0Y7V0Gbg7g52Pqf8q`
 - `dx_token`: API token for the DNAnexus user to be used for data upload. The API token should give minimally UPLOAD access to the `{{ upload project }}`, or CONTRIBUTE access if `downstream_applet` is specified. Instructions for generating a API token can be found at [DNAnexus wiki](https://wiki.dnanexus.com/UI/API-Tokens). This value is overriden by `dx_user_token` in `monitored_users`.
@@ -200,8 +198,7 @@ Role Variables
   - `workflow`: (Optional) ID of a DNAnexus workflow to be triggered after successful upload of the RUN directory. This workflow's I/O contract should accept a DNAnexus record with the  name `upload_sentinel_record` in the 1st stage (stage 0) of the workflow as input. Additional input can be specified using the variable `downstream_input`. **Note that if the specified workflow is not located, the upload process will not commence. Mutually exclusive with `applet`. The role will raise an error and fail if both are specified.**
   - `downstream_input`: (Optional) A JSON string, parsable as a python `dict` of `str`:``str`, where the **key** is the input_name recognized by a DNAnexus applet/workflow and the **value** is the corresponding input. For examples and detailed explanation, see section titled `Downstream analysis`. **Note that the role will raise an error and fail if this string is not JSON-parsable as a dict of the expected format**
 **Note** DNAnexus login is persistent and the login environment is stored on disk in the the Ansible user's home directory. User of this playbook responsibility to make sure that every Ansible user (`monitored_user`) with a streaming upload job assigned has been logged into DNAnexus by either specifying a `dx_token` or `dx_user_token`.
-Example Playbook
-----------------
+##### Example Playbook
 `dx-upload-play.yml`
 ```YAML
 ---
@@ -228,8 +225,7 @@ Example Playbook
 **Note**: For security reasons, you should refrain from storing the DNAnexus authentication token in a playbook that is open-access. One might trigger the playbook on the command line with extra-vars to supply the necessary authentication token, or store them in a closed-source yaml variable file.
 ie. `ansible-playbook dx-upload-play.yml -i inventory --extra-vars "dx_token=<SECRET_TOKEN>"`
 We recommend that the token given is limited in scope to the upload project, and has no higher than **CONTRIBUTE** privileges.
-Example Script
---------------
+##### Example Script
 The following is an example script that writes a flat file to the RUN directory once a RUN directory has been successfully streamed.
 Recall that the script will be triggered with a single command line parameter, where `$1` is the path to the local RUN directory  that has been successfully streamed to DNAnexus.
 ```
@@ -238,13 +234,11 @@ set -e -x -o pipefail
 rundir="$1"
 echo "Completed streaming run directory: $rundir" > "$rundir/COMPLETE.txt"
 ```
-Actions performed by Role
--------------------------
+##### Actions performed by Role
 The dx-streaming-upload role perform, broadly, the following:
 1. Installs the DNAnexus tools [dx-toolkit](https://wiki.dnanexus.com/Downloads#DNAnexus-Platform-SDK) and [upload agent](https://wiki.dnanexus.com/Downloads#Upload-Agent) on the remote machine.
 2. Set up a CRON job that monitors a given directory for RUN directories periodically, and streams the RUN directory into a DNAnexus project, triggering an app(let)/workflow upon successful upload of the directory and a local script (when specified by user)
-Downstream analysis
--------------------
+##### Downstream analysis
 The dx-streaming-upload role can optionally trigger a DNAnexus applet/workflow upon completion of incremental upload. The desired DNAnexus applet or workflow can be specified (at a per `monitored_user` basis) using the Ansible variables `applet` or `workflow` respectively (mutually exclusive, see explanantion of variables for general explanations).
 More information about DNAnexus workflows can be found at the [DNAnexus wiki page](https://wiki.dnanexus.com/API-Specification-v1.0.0/Running-Analyses)
 ### Authorization
@@ -260,8 +254,7 @@ Example of a properly formatted `downstream_input` for an `applet`
 Example of a properly formatted `downstream_input` for a `workflow`
 - ```{"0.step0_input": "value1", "1.step2_input": "value2"})```
 *Note the numerical index prefix necessary when specifying input for an `workflow`, which disambiguates which step in the workflow an input is targeted to*
-Files generated
-----------------
+##### Files generated
 We use a hypothetical example of a local RUN folder named `20160101_M000001_0001_000000000-ABCDE`, that was placed into the `monitored_directory`, after the `dx-streaming-upload` role has been set up.
 **Local Files Generated**
 ```
@@ -294,8 +287,7 @@ project
 The `reads` folder (and subfolders) will only be created if `applet` is specified.
 The `analyses` folder (and subfolder) will only be created if `workflow` is specified.
 `RunInfo.xml` and `SampleSheet.csv` will only be upladed if they can be located within the root of the local RUN directory.
-Logging, Notification and Error Handling
-------------------------------------------
+##### Logging, Notification and Error Handling
 **Uploading**
 A log of the CRON command (executed with `bash -e`) is written to the user's home folder `~/dx-stream_cron.log` and can be used to check the top level command triggered.
 The verbose log of the upload process (generated by the top-level `monitor_runs.py`) is written to the user's home folder `~/monitor.log`.
@@ -303,9 +295,7 @@ These logs can be used to diagnose failures of upload from the local machine to 
 **Downstream applet**
 The downstream applet will be run in the project that the RUN directory is uploaded to (as specified in role variable `upload_project`). Users can log in to their DNAnexus account (corresponding to the `dx_token` or `dx_user_token`) and navigate to the upload project to monitor the progress of the applet triggered. Typically, on failure of a DNAnexus job, the user will receive a notification email, which will direct the user to check the log of the failed job for further diagnosis and debugging.
 ## Troubleshooting
-License
--------
+##### License
 Apache
-Author Information
-------------------
+##### Author Information
 DNAnexus (email: support@dnanexus.com)
