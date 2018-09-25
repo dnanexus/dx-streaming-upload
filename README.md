@@ -179,9 +179,10 @@ Create dx-upload-play.yml file inside the dx-streaming-folder
     - dx-streaming-upload
 
 ```
-Here are the [instructions]() for token generation.
+Here are the [instructions](https://wiki.dnanexus.com/Command-Line-Client/Login-and-Logout#Generating-an-authentication-token) for token generation.
 Launch the ansible-playbook 
-```sudo ansible-playbook dx-streaming-upload/dx-upload-play.yml 
+```
+sudo ansible-playbook dx-streaming-upload/dx-upload-play.yml 
 ```
 ## Examples
 ##### Role Variables
