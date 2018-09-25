@@ -107,9 +107,13 @@ Create dx-upload-play.yml file inside the dx-streaming-folder
 ```
 Here are the instructions for token generation.
 Launch the ansible-playbook 
-```sudo ansible-playbook dx-streaming-upload/dx-upload-play.yml ```
+```
+sudo ansible-playbook dx-streaming-upload/dx-upload-play.yml
+```
 Give the right permission to cron
-```sudo cron```
+```
+sudo cron
+```
 ##### Using RedHat (tested on)
 Create a working directory, to do so, please select the /opt folder as working directory (in our case we will use ~/dx)
 ```
