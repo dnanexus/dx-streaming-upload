@@ -37,17 +37,14 @@ The machine that this role is deployed to should have sufficient free memory dep
 
 ## Installation
 ##### Using Ubuntu (tested on 14.04/16.04)
-Create a working directory, to do so, please select the /opt folder as working directory (in our case we will use ~/dx)
+Create a working directory. Please select the /opt folder as working directory (in our case we are using use ~/dx)
 ```
 mkdir ~/dx
 cd ~/dx
 ```
-Install prerequisite -- git
+Install prerequisites
 ```
 sudo apt-get install git 
-```
-Install prerequisite -- wget
-```
 sudo apt-get install wget
 ```
 Enable universe repositories
@@ -56,13 +53,12 @@ sudo apt-get install software-properties-common
 sudo apt-add-repository universe
 sudo apt-get update
 ```
-Install prerequisite -- pip and some essential packages
+Install pip and some essential packages
 ```
 curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
 sudo apt install python2.7
 sudo cp /usr/bin/python2.7 /usr/bin/python
 sudo python get-pip.py 
-pip packages
 sudo pip install -U setuptools 
 sudo pip install packaging
 make
@@ -73,7 +69,7 @@ cd ansible/
 make
 sudo make install
 ```
-Please download or move some test sequencing data in /opt/seq folder
+Download or move some test sequencing data in /opt/seq folder
 Clone streaming repo
 ```
 cd ~/dx
@@ -120,19 +116,16 @@ Create a working directory, to do so, please select the /opt folder as working d
 mkdir ~/dx 
 cd ~/dx
 ```
-Install prerequisite -- git
+Install prerequisites
 ```
 sudo yum install git -y
-```
-Install prerequisite -- wget
-```
 sudo yum install wget -y
 ```
 Enable EPEL Repository for RH 7.*
 ```
 wget http://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm 
 sudo rpm -ivh epel-release-latest-7.noarch.rpm 
-Install prerequisite -- pip and some essential packages
+Install pip and some essential packages
 sudo yum install python-pip -y 
 sudo cp /usr/bin/python2.7 /usr/bin/python
 sudo pip install -U setuptools 
@@ -147,8 +140,8 @@ cd ansible/
 make
 sudo make install
 ```
-Please download or move some test sequencing data in /opt/seq folder
-Clone streaming repo
+Download or move some test sequencing data in /opt/seq folder
+Clone streaming repository
 ```
 cd ~/dx
 git clone https://github.com/dnanexus-rnd/dx-streaming-upload.git
