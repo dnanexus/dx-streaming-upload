@@ -69,7 +69,7 @@ cd ansible/
 make
 sudo make install
 ```
-Download or move some test sequencing data in /opt/seq folder
+Download or move some test sequencing data in /opt/seq folder  
 Clone streaming repo
 ```
 cd ~/dx
@@ -94,8 +94,8 @@ Create dx-upload-play.yml file inside the dx-streaming-folder.
   roles:
     -  dx-streaming-upload
 ```
-Here are the instructions for token generation.
-Launch the ansible-playbook 
+Here are the instructions for token generation.  
+Launch the ansible-playbook  
 ```
 sudo ansible-playbook dx-streaming-upload/dx-upload-play.yml
 ```
@@ -133,14 +133,14 @@ cd ansible/
 make
 sudo make install
 ```
-Download or move some test sequencing data in /opt/seq folder
+Download or move some test sequencing data in /opt/seq folder  
 Clone streaming repository
 ```
 cd ~/dx
 git clone https://github.com/dnanexus-rnd/dx-streaming-upload.git
 ```
-Create dx-upload-play.yml file inside the dx-streaming-folder. Example given [here](#dx-upload-play.yml)
-Here are the [instructions](https://wiki.dnanexus.com/Command-Line-Client/Login-and-Logout#Generating-an-authentication-token) for token generation.
+Create dx-upload-play.yml file inside the dx-streaming-folder. Example given [here](#dx-upload-play.yml)  
+Here are the [instructions](https://wiki.dnanexus.com/Command-Line-Client/Login-and-Logout#Generating-an-authentication-token) for token generation.  
 Launch the ansible-playbook 
 ```
 sudo ansible-playbook dx-streaming-upload/dx-upload-play.yml 
@@ -272,14 +272,14 @@ You can check the status of the cron job by trying the following command -
 ```
 crontab -l
 ```
-This should provide an output to -
+This should provide an output such as -  
 ```
 #Ansible: DNAnexus monitor runs (debug)
 * * * * * flock -w 5 /var/lock/dnanexus_uploader.lock bash -ex -c 'source /opt/dx-toolkit/environment; PATH=/opt/dnanexus-upload-agent:$PATH; python /opt/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p project-XXXXX -d /PROD/NGS_DATA/MY_ILLUMINA_MACHINE/DATE/NVSQ-RUN_ID       -v > ~/monitor.log 2>&1' > ~/dx-stream_cron.log 2>&1
 ```
 #### Check status of the upload
-The upload process is logged using these files -
-`~/dx-stream_cron.log` is the first log file to monitor to see if the appropriate scripts are being launched
+The upload process is logged using these files -  
+`~/dx-stream_cron.log` is the first log file to monitor to see if the appropriate scripts are being launched  
 `~/monitor.log` is log contains the additional information about the upload process
 ## License
 Apache
