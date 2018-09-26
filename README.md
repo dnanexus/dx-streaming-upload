@@ -69,7 +69,8 @@ cd ansible/
 make
 sudo make install
 ```
-Download or move some test sequencing data in /opt/seq folder  
+Download or move some test sequencing data in `/opt/seq` folder  
+
 Clone streaming repo
 ```
 cd ~/dx
@@ -133,7 +134,8 @@ cd ansible/
 make
 sudo make install
 ```
-Download or move some test sequencing data in /opt/seq folder  
+Download or move some test sequencing data in `/opt/seq` folder 
+   
 Clone streaming repository
 ```
 cd ~/dx
