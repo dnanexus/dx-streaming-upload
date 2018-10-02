@@ -23,7 +23,7 @@ Python 2.7 is needed. This program is not compatible with Python 3.X.
 
 Minimal Ansible version: 2.0.
 
-This program is intended for Ubuntu 14.04 and 16.04, and has been tested on Red Hat 7.4/7.5 and OLE (Oracle Linux Enterprise) 7. It has not been tested on any other versions. 
+This program is intended for Ubuntu 14.04 and 16.04, and has been tested on Red Hat 7.4/7.5 and OLE (Oracle Linux Enterprise) 7. It has not been tested on any other versions but it should work with most of the Linux OS releases.
 
 ## Requirements
 
@@ -31,7 +31,7 @@ Users of this module needs a DNAnexus account and its accompanying authenticatio
 
 More information and tutorials about the DNAnexus platform can be found at the [DNAnexus wiki page](https://wiki.dnanexus.com/Home).
 
-The remote-user that the role is run against must possess READ access to monitored_folder and WRITE access to disk for logging and temporary storage of tar files. These are typically stored under the remote-user's home directory, and is specified in the file monitor_run_config.template or as given explicitly by the variables local_tar_directory and local_log_directory.
+The local user utilizing this package should possess READ access to monitored_folder and WRITE access to disk for logging and temporary storage of tar files. These are typically stored under the local user's home directory, and is specified in the file monitor_run_config.template or as given explicitly by the variables local_tar_directory and local_log_directory.
 
 The machine that this role is deployed to should have sufficient free memory depending on the throughput of the sequencing instrument. For Novaseq and HiSeqs we recommend a machine with atleast 8 cores, 32 GB of RAM, and 500GB - 1TB of storage.
 
@@ -135,7 +135,7 @@ make
 sudo make install
 ```
 Download or move some test sequencing data in `/opt/seq` folder 
-   
+
 Clone streaming repository
 ```
 cd ~/dx
@@ -152,8 +152,8 @@ sudo ansible-playbook dx-streaming-upload/dx-upload-play.yml
 - `mode`: `{deploy, debug}` In the *debug* mode, monitoring cron job is triggered every minute; in *deploy mode*, monitoring cron job is triggered every hour.
 - `upload_project`: ID of the DNAnexus project that the RUN folders should be uploaded to. The ID is of the form `project-BpyQyjj0Y7V0Gbg7g52Pqf8q`
 - `dx_token`: API token for the DNAnexus user to be used for data upload. The API token should give minimally UPLOAD access to the `{{ upload project }}`, or CONTRIBUTE access if `downstream_applet` is specified. Instructions for generating a API token can be found at [DNAnexus wiki](https://wiki.dnanexus.com/UI/API-Tokens). This value is overriden by `dx_user_token` in `monitored_users`.
-- `monitored_users`: This is a list of objects, each representing a remote user, with its set of incremental upload parameters. For each `monitored_user`, the following values are accepted
-  - `username`: (Required) username of the remote user
+- `monitored_users`: This is a list of objects, each representing a local user, with its set of incremental upload parameters. For each `monitored_user`, the following values are accepted
+  - `username`: (Required) username of the local user
   - `monitored_directories`: (Required)  Path to the local directory that should be monitored for RUN folders. Multiple directories can be listed. Suppose that the folder `20160101_M000001_0001_000000000-ABCDE` is the RUN directory, then the folder structure assumed is `{{monitored_dir}}/20160101_M000001_0001_000000000-ABCDE`
   - `local_tar_directory`: (Optional) Path to a local folder where tarballs of RUN directory is temporarily stored. User specified in `username` need to have **WRITE** access to this folder. There should be sufficient disk space to accomodate a RUN directory in this location. This overwrites the default found in `templates/monitor_run_config.template`.
   - `local_log_directory`: (Optional) Path to a local folder where logs of streaming upload is stored, persistently. User specified in `username` need to have **WRITE** access to this folder. User should not manually manipulate files found in this folder, as the streaming upload code make assumptions that the files in this folder are not manually manipulated. This overwites the default found in `templates/monitor_run_config.template`.
@@ -204,7 +204,7 @@ echo "Completed streaming run directory: $rundir" > "$rundir/COMPLETE.txt"
 ```
 #### Actions performed by Role
 The dx-streaming-upload role perform, broadly, the following:
-1. Installs the DNAnexus tools [dx-toolkit](https://wiki.dnanexus.com/Downloads#DNAnexus-Platform-SDK) and [upload agent](https://wiki.dnanexus.com/Downloads#Upload-Agent) on the remote machine.
+1. Installs the DNAnexus tools [dx-toolkit](https://wiki.dnanexus.com/Downloads#DNAnexus-Platform-SDK) and [upload agent](https://wiki.dnanexus.com/Downloads#Upload-Agent) on the local machine.
 2. Set up a CRON job that monitors a given directory for RUN directories periodically, and streams the RUN directory into a DNAnexus project, triggering an app(let)/workflow upon successful upload of the directory and a local script (when specified by user)
 #### Downstream analysis
 The dx-streaming-upload role can optionally trigger a DNAnexus applet/workflow upon completion of incremental upload. The desired DNAnexus applet or workflow can be specified (at a per `monitored_user` basis) using the Ansible variables `applet` or `workflow` respectively (mutually exclusive, see explanantion of variables for general explanations).
