@@ -23,7 +23,7 @@
 
 - name: Download and unzip UA tarball
   unarchive: 
-    src: https://wiki.dnanexus.com/images/files/dnanexus-upload-agent-1.5.10-linux.tar.gz 
+    src: https://wiki.dnanexus.com/images/files/dnanexus-upload-agent-1.5.30-linux.tar.gz
     dest: /opt/dnanexus-upload-agent
     copy: no
 
