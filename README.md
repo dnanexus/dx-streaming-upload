@@ -11,7 +11,7 @@ Role Variables
 --------------
 - `mode`: `{deploy, debug}` In the *debug* mode, monitoring cron job is triggered every minute; in *deploy mode*, monitoring cron job is triggered every hour.
 - `upload_project`: ID of the DNAnexus project that the RUN folders should be uploaded to. The ID is of the form `project-BpyQyjj0Y7V0Gbg7g52Pqf8q`
-- `dx_token`: API token for the DNAnexus user to be used for data upload. The API token should give minimally UPLOAD access to the `{{ upload project }}`, or CONTRIBUTE access if `downstream_applet` is specified. Instructions for generating a API token can be found at [DNAnexus wiki](https://wiki.dnanexus.com/UI/API-Tokens). This value is overriden by `dx_user_token` in `monitored_users`.
+- `dx_token`: API token for the DNAnexus user to be used for data upload. The API token should give minimally UPLOAD access to the `{{ upload project }}`, or CONTRIBUTE access if `downstream_applet` is specified. Instructions for generating a API token can be found on the DNAnexus documentation [Authentication Tokens](https://documentation.dnanexus.com/user/login-and-logout#generating-an-authentication-token) page. This value is overriden by `dx_user_token` in `monitored_users`.
 - `monitored_users`: This is a list of objects, each representing a remote user, with its set of incremental upload parameters. For each `monitored_user`, the following values are accepted
   - `username`: (Required) username of the remote user
   - `monitored_directories`: (Required)  Path to the local directory that should be monitored for RUN folders. Multiple directories can be listed. Suppose that the folder `20160101_M000001_0001_000000000-ABCDE` is the RUN directory, then the folder structure assumed is `{{monitored_dir}}/20160101_M000001_0001_000000000-ABCDE`
@@ -41,7 +41,7 @@ Requirements
 ------------
 Users of this module needs a DNAnexus account and its accompanying authentication. To register for a trial account, visit the [DNAnexus homepage](https://dnanexus.com).
 
-More information and tutorials about the DNAnexus platform can be found at the [DNAnexus wiki page](https://wiki.dnanexus.com).
+More information and tutorials about the DNAnexus platform can be found in the [DNAnexus documentation](https://documentation.dnanexus.com/).
 
 The `remote-user` that the role is run against must possess **READ** access to `monitored_folder` and **WRITE** access to disk for logging and temporary storage of tar files. These are typically stored under the `remote-user's` home directory, and is specified in the file `monitor_run_config.template` or as given explicitly by the variables `local_tar_directory` and `local_log_directory`.
 
@@ -100,14 +100,14 @@ Actions performed by Role
 -------------------------
 The dx-streaming-upload role perform, broadly, the following:
 
-1. Installs the DNAnexus tools [dx-toolkit](https://wiki.dnanexus.com/Downloads#DNAnexus-Platform-SDK) and [upload agent](https://wiki.dnanexus.com/Downloads#Upload-Agent) on the remote machine.
+1. Installs the DNAnexus tools [dx-toolkit](https://documentation.dnanexus.com/downloads) and [upload agent](https://documentation.dnanexus.com/downloads#upload-agent) on the remote machine.
 2. Set up a CRON job that monitors a given directory for RUN directories periodically, and streams the RUN directory into a DNAnexus project, triggering an app(let)/workflow upon successful upload of the directory and a local script (when specified by user)
 
 Downstream analysis
 -------------------
 The dx-streaming-upload role can optionally trigger a DNAnexus applet/workflow upon completion of incremental upload. The desired DNAnexus applet or workflow can be specified (at a per `monitored_user` basis) using the Ansible variables `applet` or `workflow` respectively (mutually exclusive, see explanantion of variables for general explanations).
 
-More information about DNAnexus workflows can be found at the [DNAnexus wiki page](https://wiki.dnanexus.com/API-Specification-v1.0.0/Running-Analyses)
+More information about running DNAnexus analyses can be found on the DNAnexus documentation [Running Analyses](https://documentation.dnanexus.com/developer/api/running-analyses) page.
 
 ### Authorization
 The downstream analysis (applet or workflow) will be launched in the project into which the RUN directory is uploaded to (`project`). The DNAnexus user / associated `dx_token` or `dx_user_token` must have at least `CONTRIBUTE` access to the aforementioned project for the analysis to be launched successfully. Computational resources are billable and will be billed to the bill-to of the corresponding project.
