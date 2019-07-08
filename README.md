@@ -107,7 +107,7 @@ Downstream analysis
 -------------------
 The dx-streaming-upload role can optionally trigger a DNAnexus applet/workflow upon completion of incremental upload. The desired DNAnexus applet or workflow can be specified (at a per `monitored_user` basis) using the Ansible variables `applet` or `workflow` respectively (mutually exclusive, see explanantion of variables for general explanations).
 
-More information about running DNAnexus analyses can be found on the DNAnexus documentation [Running Analyses page](https://documentation.dnanexus.com/developer/api/running-analyses)
+More information about running DNAnexus analyses can be found on the DNAnexus documentation [Running Analyses](https://documentation.dnanexus.com/developer/api/running-analyses) page.
 
 ### Authorization
 The downstream analysis (applet or workflow) will be launched in the project into which the RUN directory is uploaded to (`project`). The DNAnexus user / associated `dx_token` or `dx_user_token` must have at least `CONTRIBUTE` access to the aforementioned project for the analysis to be launched successfully. Computational resources are billable and will be billed to the bill-to of the corresponding project.
