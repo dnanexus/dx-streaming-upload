@@ -2,7 +2,7 @@
 # Install Dx-toolkit
 - name: Get DX tarball
   unarchive: 
-    src: https://wiki.dnanexus.com/images/files/dx-toolkit-current-ubuntu-14.04-amd64.tar.gz 
+    src: https://dnanexus-sdk.s3.amazonaws.com/dx-toolkit-v0.285.1-ubuntu-14.04-amd64.tar.gz 
     remote_src: yes 
     dest: /opt/
 
@@ -23,7 +23,7 @@
 
 - name: Download and unzip UA tarball
   unarchive: 
-    src: https://wiki.dnanexus.com/images/files/dnanexus-upload-agent-1.5.30-linux.tar.gz
+    src: https://dnanexus-sdk.s3.amazonaws.com/dnanexus-upload-agent-1.5.31-linux.tar.gz
     dest: /opt/dnanexus-upload-agent
     copy: no
 
