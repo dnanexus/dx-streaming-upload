@@ -89,6 +89,8 @@ def parse_args():
             "DNAnexus applet or workflow run after successful upload. Note that " +
             "the input upload_sentinel_record for applet or 0.upload_sentinel_record " +
             "will be overwritten programmatically, even if provided by user.")
+    parser.add_argument("-S", "--samplesheet-delay", action="store_true",
+            help="Delay samplesheet upload until run data is uploaded.")
 
     # Mutually exclusive inputs for verbose loggin (UA) vs dxpy upload
     upload_debug_group = parser.add_mutually_exclusive_group(required=False)

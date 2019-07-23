@@ -356,6 +356,9 @@ def _trigger_streaming_upload(folder, config):
 
     if 'downstream_input' in config:
         command += ["--downstream-input", config['downstream_input']]
+    
+    if config.get("delay_sample_sheet_upload", False):
+        command.append("-S")
     # Ensure all numerical values are formatted as string
     command = [str(word) for word in command]
 
