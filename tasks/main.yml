@@ -155,6 +155,13 @@
   become_user: "{{ item.username }}"
   when: item.n_streaming_threads is defined
 
+- name: Change specification for delaying sample sheet upload
+  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^delay_sample_sheet_upload:.*' line='delay_sample_sheet_upload: \"{{ item.delay_sample_sheet_upload }}\"'"
+  with_items: "{{ monitored_users }}"
+  become: yes
+  become_user: "{{ item.username }}"
+  when: item.delay_sample_sheet_upload is defined
+
 # Create lock file
 - name: Create lock file for CRON to wait on using flock
   file: path=/var/lock/dnanexus_uploader.lock state=touch
