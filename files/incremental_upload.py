@@ -354,14 +354,16 @@ def main():
                     folder=lane["remote_folder"], parents=True,
                     name=lane["record_name"], properties=properties)
 
-        # upload SampleSheet and RunInfo here, before uploading any data.
-
+        # upload RunInfo here, before uploading any data.
         record = lane["dxrecord"]
         properties = record.get_properties()
         lane["runinfo_file_id"]     = upload_single_file(args.run_dir + "/RunInfo.xml", args.project,
                                          lane["remote_folder"], properties)
-        lane["samplesheet_file_id"] = upload_single_file(args.run_dir + "/SampleSheet.csv", args.project,
-                                         lane["remote_folder"], properties)
+
+        # Upload samplesheet unless samplesheet-delay is specified
+        if not args.samplesheet_delay:
+            lane["samplesheet_file_id"] = upload_single_file(args.run_dir + "/SampleSheet.csv", args.project,
+                                            lane["remote_folder"], properties)
 
     if done_count == len(lane_info):
         print_stderr("EXITING: All lanes already uploaded")
@@ -415,6 +417,11 @@ def main():
             'dnanexus_path': args.project + ":" + lane["remote_folder"],
             'tar_file_ids': file_ids
             }
+
+        # Upload sample sheet here, if samplesheet-delay specified
+        if args.samplesheet_delay:
+            lane["samplesheet_file_id"] = upload_single_file(args.run_dir + "/SampleSheet.csv", args.project,
+                                            lane["remote_folder"], properties)
 
         # ID to singly uploaded file (when uploaded successfully)
         if lane.get("log_file_id"):
