@@ -11,9 +11,10 @@ import sys
 import time
 import yaml
 import logging
+from functools import partial
 
-# Whether to print verbose Debuggin messages
-DEBUG = False
+RUN_INFO_FILENAME = 'RunInfo.xml'
+RUN_COMPLETE_SENTINELS = ['RTAComplete.txt', 'RTAComplete.xml']
 
 # If upload is incomplete and local log has not been updated
 # for this many intervals, the upload is considered to have failed
@@ -80,7 +81,6 @@ def parse_args():
 
     optionalNamed = parser.add_argument_group("Optional named arguemnts")
 
-
     optionalNamed.add_argument('--script', '-s',
                         help='Script to execute after successful upload of the RUN folder, ' +
                               'see incremental_upload.py',
@@ -111,6 +111,7 @@ def parse_args():
         logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
     return args
 
+
 def get_dx_auth_token():
     """Parses dx_auth_token from the output of dx env
     Exits with error message if dx env failed to execute
@@ -137,6 +138,7 @@ def get_streaming_config(config_file, project, applet, workflow, script, token):
     for key, default in CONFIG_DEFAULT.items():
         config[key] = user_config_dict.get(key, default)
     return config
+
 
 def check_config_fields(config):
     """ Validate the given directory fields in config are valid directories"""
@@ -165,6 +167,7 @@ def check_config_fields(config):
             invalid_config("JSON parse error for downstream input: {0}".format(input_json))
     return config
 
+
 def get_run_folders(base_dir):
     """ Get the local directories within the specified base_dir.
     It does NOT check whether these directories are Illumina directories. This check
@@ -178,82 +181,85 @@ def get_run_folders(base_dir):
             if os.path.isdir(os.path.join(base_dir, dir_name))
             and not dir_name.startswith(".")]
 
-def check_local_runs(base_dir, run_folders, run_length, n_intervals):
-    """ Check local folders to ascertain which are Illumina RUN directories (defined
-    as containing a RunInfo.xml file in root of the folder).
-    Classify such RUN folders into 3 classes:
-     - Completed runs (has a RunInfo.xml and a RTAComplete.txt/xml file)
-     - In-progress run (has a RunInfo.xml file, but not a RTAComplete.txt/xml file)
-     - Stale run (has a RunInfo.xml file, which was created more than Y times expected duration
-       of a sequencing run, both the sequencing runtime and Y will be user-specified,
-       with defaults of 2 and 24hrs respectively).
-    """
 
-    not_run_folders, completed_runs, in_progress_runs, stale_runs = ([] for i in range(4))
+def is_run_folder(folder_path):
+    """This function will check if the given folder is an Illumina run folder
+    by looking for the presence of an RUN_INFO_FILENAME file"""
+    return os.path.isfile(os.path.join(folder_path, RUN_INFO_FILENAME))
 
-    for run_folder in run_folders:
-        folder_path = os.path.join(base_dir, run_folder)
-        run_info_path = os.path.join(folder_path, 'RunInfo.xml')
-        if not os.path.isfile(run_info_path):
-            # Not a run_folder
-                not_run_folders.append(run_folder)
+
+def is_complete_run_folder(folder_path):
+    """This function will check to see if the given folder is a complete run 
+    folder by checking for the presence of RTAComplete.txt or RTAComplete.xml"""
+    if not is_run_folder(folder_path):
+        return False
+
+    return any((os.path.isfile(os.path.join(folder_path, fn)) for fn in RUN_COMPLETE_SENTINELS))
+
+
+def is_stale_run_folder(folder_path, run_length, n_intervals):
+    """This function will check whether the given folder appears to be 
+    a stale run folder by checking how much time has passed between now
+    and its creation time."""
+    if not is_run_folder(folder_path) or is_complete_run_folder(folder_path):
+        return False
+
+    curr_time = time.time()
+    created_time = os.path.getmtime(os.path.join(folder_path, RUN_INFO_FILENAME))
+    time_to_wait = dxpy.utils.normalize_timedelta(run_length) / 1000 * n_intervals
+
+    if (curr_time - created_time) > time_to_wait:
+        warning_message = ("Run folder {0} was created on {1}; "
+                           "it is determined to be STALE and will NOT be uploaded.")
+        logging.warning(warning_message.format(folder_path, 
+            time.strftime("%Z - %Y/%m/%d, %H:%M:%S", time.localtime(created_time))))
+        return True
+    else:
+        return False
+
+
+def is_sync_incomplete(folder, config):
+    """ Check whether the RUN folder sync is incomplete by querying the state
+    of the sentinel record (closed = complete, open = incomplete). Returns
+    a list of incomplete syncs which have been deemed to be inactive, according
+    to the local_upload_has_lapsed function"""
+    sentinel_record = find_record(folder, config['project'])
+    try:
+        if sentinel_record.describe()['state'] == "open" and local_upload_has_lapsed(folder, config):
+            return True
         else:
-            # Is a RUN folder
-            if (os.path.isfile(os.path.join(folder_path, 'RTAComplete.txt')) or
-                os.path.isfile(os.path.join(folder_path, 'RTAComplete.xml'))):
-                # Is a completed RUN folder
-                completed_runs.append(run_folder)
-            else:
-                # RUN is incomplete, check whether it's stale
-                curr_time = time.time()
-                created_time = os.path.getmtime(run_info_path)
-                time_to_wait = dxpy.utils.normalize_timedelta(run_length) / 1000 * n_intervals
-                if (curr_time - created_time) > time_to_wait:
-                    # Stale run
-                    debug_message = ("Run folder {0} was created on {1}; "
-                                     "it is determined to be STALE and will NOT be uploaded.")
-                    logging.debug(debug_message.format(run_folder, 
-                        time.strftime("%Z - %Y/%m/%d, %H:%M:%S", time.localtime(created_time))))
-                    
-                    stale_runs.append(run_folder)
-                else:
-                    # Ongoing run
-                    in_progress_runs.append(run_folder)
-
-    return (not_run_folders, completed_runs, in_progress_runs, stale_runs)
+            return False
+    except KeyError, e:
+        sys.exit("Unknown exception when getting state of record {0}. {1}: {2}".format(sentinel_record, e.errno, e.strerror))
 
 
-def check_dnax_folders(run_folders, project):
-    """Check the RUN folders that have been synced (fully/partially) onto DNAnexus by looking into the
-    RUN_UPLOAD_DEST folder of the given project. """
+def get_folders_in_dnax_project(project):
+    """Gets a list of folders in the RUN_UPLOAD_DEST folder of the given project. """
     try:
         dx_proj = dxpy.bindings.DXProject(project)
-
     except dxpy.exceptions.DXError, e:
         sys.exit("Invalid project ID ({0}) given. {1}".format(project, str(e)))
 
     try:
         dnax_folders = dx_proj.list_folder(RUN_UPLOAD_DEST, only="folders")['folders']
-        dnax_folders = [os.path.basename(folder) for folder in dnax_folders]
+        dnax_folders = {os.path.basename(folder) for folder in dnax_folders}
 
-        synced_folders = filter( (lambda folder: folder in dnax_folders), run_folders)
-        unsynced_folders = filter( (lambda folder: folder not in dnax_folders), run_folders)
-
-        return (synced_folders, unsynced_folders)
+        return dnax_folders
 
     # RUN_UPLOAD_DEST is not a valid directory in project
     # ie, incremental upload has never been triggered in this project
     # All RUN folders are considered to be unsynced
     except dxpy.exceptions.ResourceNotFound, e:
-        logging.debug("{0} not found in project {1}".format(RUN_UPLOAD_DEST, project))
-        logging.debug("Interpreting this as all local RUN folders are unsynced")
-        return ([], run_folders)
+        logging.warning("{0} not found in project {1}".format(RUN_UPLOAD_DEST, project))
+        logging.warning("Interpreting this as all local RUN folders are unsynced.")
+        return set()
 
     # Dict returned by list_folder did not contian a "folders" key
     # This is an unexpected exception
     except KeyError, e:
         sys.exit("Unknown exception when fetching folders in {0} of {1}. {2}: {3}.".format(
                   RUN_UPLOAD_DEST, project, e.errno, e.strerror))
+
 
 def find_record(run_name, project):
     """ Wrapper to find the sentinel record for a given run_name in the given
@@ -305,28 +311,8 @@ def local_upload_has_lapsed(folder, config):
 
     return ((elapsed_time / config['min_interval']) > N_INTERVALS_TO_WAIT)
 
-def check_complete_sync(synced_folders, config):
-    """ Check whether the RUN folder sync is complete by querying the state
-    of the sentinel record (closed = complete, open = incomplete). Returns
-    a list of incomplete syncs which have been deemed to be inactive, according
-    to the local_upload_has_lapsed function"""
-    incomplete_syncs = []
-    for folder in synced_folders:
-        sentinel_record = find_record(folder, config['project'])
-        try:
-            state = sentinel_record.describe()['state']
-            # Upload sentinel is open, signifies that incremental upload
-            # is incomplete
-            if state == "open":
-                if (local_upload_has_lapsed(folder, config)):
-                    incomplete_syncs.append(folder)
 
-        except KeyError, e:
-            sys.exit("Unknown exception when getting state of record {0}. {1}: {2}".format(sentinel_record, e.errno, e.strerror))
-
-    return incomplete_syncs
-
-def _trigger_streaming_upload(folder, config):
+def trigger_streaming_upload(folder, config):
     """ Execute the incremental_upload.py script, assumed to be located
     in the same directory as the executed monitor_runs.py, potentially multiple
     instances of this can be triggered using a thread pool"""
@@ -368,19 +354,37 @@ def _trigger_streaming_upload(folder, config):
         error_message = "Incremental upload command {0} failed.\nError code {1}:{2}"
         logging.error(error_message.format(e.cmd, e.returncode, e.output))
 
-def trigger_streaming_upload(folders, config):
-    """ Open a thread pool of size N_STREAMING_THREADS
-    and trigger streaming upload for all unsynced and incomplete folders"""
-    pool = multiprocessing.Pool(processes=int(config["n_streaming_threads"]))
-    for folder in folders:
-        print("Adding folder {0} to pool".format(folder))
-        pool.apply_async(_trigger_streaming_upload, args=(folder, config)).get()
 
-    # Close pool, no more tasks can be added
-    pool.close()
+def process_folder(run_folder, base_dir, dnax_folders, config):
+    """This function will:
+       1. Check whether the given folder appears to be an Illumina run folder
+       2. If it is a run folder, determine whether the run is:
+          a. Complete (has a RunInfo.xml and a RTAComplete.txt/xml file)
+          b. In-progress (has a RunInfo.xml file, but not a RTAComplete.txt/xml file)
+          c. Stale (has a RunInfo.xml file, which was created more than Y times expected duration
+             of a sequencing run, both the sequencing runtime and Y will be user-specified,
+             with defaults of 2 and 24hrs respectively)"""
+    folder_path = os.path.join(base_dir, run_folder)
+    
+    if not is_run_folder(folder_path):
+        warning_message = '{0} does not appear to be an Illumina run folder. It will be skipped.'
+        logging.warning(warning_message.format(run_folder))
+        return
+    
+    # If this is an incomplete run folder and a stale run folder
+    if is_stale_run_folder(folder_path, config["run_length"], config["n_seq_intervals"]):
+        warning_message = '{0} is a stale Illumina run folder. It will be skipped.'
+        logging.warning(warning_message.format(run_folder))
+        return
+    
+    # Check to see if we have started to sync this folder already.
+    if run_folder not in dnax_folders or is_sync_incomplete(run_folder, config):
+        if run_folder in dnax_folders:
+            logging.debug("Resuming incomplete sync for {}".format(run_folder))
+        else:
+            logging.debug("Starting sync for {}".format(run_folder))
+        trigger_streaming_upload(run_folder, config)
 
-    # Wait for all incremental upload threads
-    pool.join()
 
 def main():
     """ Main entry point """
@@ -399,7 +403,6 @@ def main():
     streaming_config = get_streaming_config(args.config, args.project,
                                             args.applet, args.workflow,
                                             args.script, token)
-
     logging.debug("Got config: {}".format(str(streaming_config)))
 
     streaming_config = check_config_fields(streaming_config)
@@ -408,39 +411,18 @@ def main():
     run_folders = get_run_folders(args.directory)
     logging.debug("Got RUN folders: {}".format(str(run_folders)))
 
-    (not_runs, completed_runs, ongoing_runs, stale_runs) = check_local_runs(args.directory, run_folders,
-                                                                  streaming_config['run_length'],
-                                                                  streaming_config['n_seq_intervals'])
+    dnax_folders = get_folders_in_dnax_project(args.project)
+    logging.debug("Got DNAnexus folders: {}".format(str(dnax_folders)))
 
-    logging.debug("Searching for run directories in {0}:".format(args.directory))
-    if not_runs:
-        logging.debug("Following folders are deemed NOT to be run directories: {0}".format(not_runs))
-    if completed_runs:
-        logging.debug("Following folders are deemed to be COMPLETED runs: {0}".format(completed_runs))
-    if ongoing_runs:
-        logging.debug("Following folders are deemed to be ONGOING runs: {0}".format(ongoing_runs))
-    if stale_runs:
-        debug_message = "Following folders are deeemed to be STALE runs and will not be uploaded: {0}"
-        logging.debug(debug_message.format(stale_runs))
+    partial_process_folder = partial(process_folder, base_dir=args.directory,
+        dnax_folders=dnax_folders, config=streaming_config
+    )
+    
+    pool = multiprocessing.Pool(processes=int(streaming_config["n_streaming_threads"]))
+    pool.map_async(partial_process_folder, run_folders)
+    pool.close()
+    pool.join()
 
-    syncable_folders = completed_runs + ongoing_runs
-    (synced_folders, unsynced_folders) = check_dnax_folders(syncable_folders, args.project)
-    logging.debug("Got synced folders: {}".format(str(syncable_folders)))
-    logging.debug("Got unsynced folders: {}".format(str(unsynced_folders)))
-
-    folders_to_sync = []
-    if synced_folders:
-        incomplete_syncs = check_complete_sync(synced_folders, streaming_config)
-        folders_to_sync += incomplete_syncs
-        logging.debug("Got incomplete folders: {}".format(str(incomplete_syncs)))
-
-    # Preferentially upload partially-synced folders before unsynced ones
-    folders_to_sync += unsynced_folders
-    folders_to_sync = ["{0}".format(os.path.join(args.directory, folder)) for folder in folders_to_sync]
-
-    logging.debug("Folders to sync: {0}".format(folders_to_sync))
-
-    trigger_streaming_upload(folders_to_sync, streaming_config)
 
 if __name__ == "__main__":
     main()
