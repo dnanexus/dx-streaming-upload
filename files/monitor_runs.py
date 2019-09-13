@@ -121,7 +121,10 @@ def get_dx_auth_token():
         return dxpy.SECURITY_CONTEXT['auth_token']
 
     except KeyError, e:
-        sys.exit("Could not parse auth_token in dxpy environment, ensure that you have logged in using an API token!\n{0}: {1}".format(e.errno, e.strerror))
+        error_msg = ("Could not parse auth_token in dxpy environment, ensure that "
+                     "you have logged in using an API token!\n{0}: {1}")
+        logging.error(error_msg.format(e.errno, e.strerror))
+        sys.exit(1)
 
 
 def get_streaming_config(config_file, project, applet, workflow, script, token):
@@ -143,7 +146,8 @@ def get_streaming_config(config_file, project, applet, workflow, script, token):
 def check_config_fields(config):
     """ Validate the given directory fields in config are valid directories"""
     def invalid_config(msg):
-        sys.exit("Config file is invalid: {0}".format(msg))
+        logging.error("Config file is invalid: {0}".format(msg))
+        sys.exit(1)
 
     required_dirs = ['log_dir', 'tmp_dir']
 
@@ -173,8 +177,9 @@ def get_run_folders(base_dir):
     It does NOT check whether these directories are Illumina directories. This check
     is left to the downstream incremental_upload.py script"""
     if not os.path.isdir(base_dir):
-        sys.exit("Specified base directory for monitoring ({0}) is not a valid directory.".format(
-            base_dir))
+        error_msg = "Specified base directory for monitoring ({0}) is not a valid directory."
+        logging.error(error_msg.format(base_dir))
+        sys.exit(1)
 
     # Get all directory names which are not hidden (ie doesn't starts with '.')
     return [dir_name for dir_name in os.listdir(base_dir)
@@ -230,7 +235,9 @@ def is_sync_incomplete(folder, config):
         else:
             return False
     except KeyError, e:
-        sys.exit("Unknown exception when getting state of record {0}. {1}: {2}".format(sentinel_record, e.errno, e.strerror))
+        error_msg = "Unknown exception when getting state of record {0}. {1}: {2}"
+        logging.error(error_msg.format(sentinel_record, e.errno, e.strerror))
+        sys.exit(1)
 
 
 def get_folders_in_dnax_project(project):
@@ -238,7 +245,8 @@ def get_folders_in_dnax_project(project):
     try:
         dx_proj = dxpy.bindings.DXProject(project)
     except dxpy.exceptions.DXError, e:
-        sys.exit("Invalid project ID ({0}) given. {1}".format(project, str(e)))
+        logging.error("Invalid project ID ({0}) given. {1}".format(project, str(e)))
+        sys.exit(1)
 
     try:
         dnax_folders = dx_proj.list_folder(RUN_UPLOAD_DEST, only="folders")['folders']
@@ -257,8 +265,9 @@ def get_folders_in_dnax_project(project):
     # Dict returned by list_folder did not contian a "folders" key
     # This is an unexpected exception
     except KeyError, e:
-        sys.exit("Unknown exception when fetching folders in {0} of {1}. {2}: {3}.".format(
-                  RUN_UPLOAD_DEST, project, e.errno, e.strerror))
+        error_msg = "Unknown exception when fetching folders in {0} of {1}. {2}: {3}."
+        logging.error(error_msg.format(RUN_UPLOAD_DEST, project, e.errno, e.strerror))
+        sys.exit(1)
 
 
 def find_record(run_name, project):
@@ -274,7 +283,9 @@ def find_record(run_name, project):
     # Either zero or multiple records found, in cases where we cannot resolve uniquely
     # the upload sentinel, we exit the program with an error
     except dxpy.exceptions.DXSearchError, e:
-        sys.exit("Unexpected result when searching for upload sentinel of run {0}. {1}".format(run_name, e))
+        error_msg = "Unexpected result when searching for upload sentinel of run {0}. {1}"
+        logging.error(error_msg.format(run_name, e))
+        sys.exit(1)
 
 
 def local_upload_has_lapsed(folder, config):
@@ -395,7 +406,8 @@ def main():
     curr_dir = sys.path[0]
     if (not os.path.isfile("{0}".format(os.path.join(curr_dir, 'incremental_upload.py'))) or
         not os.path.isfile("{0}".format(os.path.join(curr_dir, 'dx_sync_directory.py')))):
-        sys.exit("Failed to locate necessary scripts for incremental upload")
+        logging.error("Failed to locate necessary scripts for incremental upload")
+        sys.exit(1)
 
     token = get_dx_auth_token()
     logging.debug("Got token: {}".format(token))
