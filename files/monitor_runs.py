@@ -283,7 +283,7 @@ def local_upload_has_lapsed(folder, config):
         # The log file could have been moved or deleted. Treat this as an lapsed upload
         debug_message = "Local log file could not be found for {run} at {folder}"
         logging.debug(debug_message.format(run=folder, 
-            folder='{0}/{1}'.format(config['log_dir'], folder)))
+            folder='{0}'.format(os.path.join(config['log_dir'], folder))))
         debug_message = ("Treating run {0} as a lapsed local upload, "
                          "and will reinitiate streaming upload")
         logging.debug(debug_message.format(folder))
@@ -331,7 +331,7 @@ def _trigger_streaming_upload(folder, config):
     in the same directory as the executed monitor_runs.py, potentially multiple
     instances of this can be triggered using a thread pool"""
     curr_dir = sys.path[0]
-    inc_upload_script_loc = "{0}/{1}".format(curr_dir, "incremental_upload.py")
+    inc_upload_script_loc = "{0}".format(os.path.join(curr_dir, "incremental_upload.py"))
     command = ["python", inc_upload_script_loc,
                "-a", config['token'],
                "-p", config['project'],
@@ -389,15 +389,12 @@ def main():
 
     # Make sure that we can find the incremental_upload scripts
     curr_dir = sys.path[0]
-    if (not os.path.isfile("{0}/{1}".format(curr_dir, 'incremental_upload.py')) or
-        not os.path.isfile("{0}/{1}".format(curr_dir, 'dx_sync_directory.py'))):
+    if (not os.path.isfile("{0}".format(os.path.join(curr_dir, 'incremental_upload.py'))) or
+        not os.path.isfile("{0}".format(os.path.join(curr_dir, 'dx_sync_directory.py')))):
         sys.exit("Failed to locate necessary scripts for incremental upload")
 
     token = get_dx_auth_token()
     logging.debug("Got token: {}".format(token))
-    
-    run_folders = get_run_folders(args.directory)
-    logging.debug("Got RUN folders: {}".format(str(run_folders)))
 
     streaming_config = get_streaming_config(args.config, args.project,
                                             args.applet, args.workflow,
@@ -407,6 +404,9 @@ def main():
 
     streaming_config = check_config_fields(streaming_config)
     logging.debug("Validated config: {}".format(str(streaming_config)))
+
+    run_folders = get_run_folders(args.directory)
+    logging.debug("Got RUN folders: {}".format(str(run_folders)))
 
     (not_runs, completed_runs, ongoing_runs, stale_runs) = check_local_runs(args.directory, run_folders,
                                                                   streaming_config['run_length'],
@@ -436,7 +436,7 @@ def main():
 
     # Preferentially upload partially-synced folders before unsynced ones
     folders_to_sync += unsynced_folders
-    folders_to_sync = ["{0}/{1}".format(args.directory, folder) for folder in folders_to_sync]
+    folders_to_sync = ["{0}".format(os.path.join(args.directory, folder)) for folder in folders_to_sync]
 
     logging.debug("Folders to sync: {0}".format(folders_to_sync))
 
