@@ -237,7 +237,7 @@ def is_sync_incomplete(folder, config):
     except KeyError, e:
         error_msg = "Unknown exception when getting state of record {0}. {1}: {2}"
         logging.error(error_msg.format(sentinel_record, e.errno, e.strerror))
-        sys.exit(1)
+        raise
 
 
 def get_folders_in_dnax_project(project):
@@ -285,7 +285,7 @@ def find_record(run_name, project):
     except dxpy.exceptions.DXSearchError, e:
         error_msg = "Unexpected result when searching for upload sentinel of run {0}. {1}"
         logging.error(error_msg.format(run_name, e))
-        sys.exit(1)
+        raise
 
 
 def local_upload_has_lapsed(folder, config):
