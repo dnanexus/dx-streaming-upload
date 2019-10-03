@@ -126,3 +126,5 @@ dmypy.json
 # vscode IDE
 .vscode/
 
+# test artifacts
+ansible.cfg
