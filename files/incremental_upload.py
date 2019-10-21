@@ -277,6 +277,7 @@ def run_sync_dir(lane, args, finish=False):
     invocation.extend(["--max-tar-size", str(args.max_size)])
     invocation.extend(["--upload-threads", str(args.upload_threads)])
     invocation.extend(["--prefix", lane["prefix"]])
+    invocation.extend(["--auth-token", args.api_token])
     if args.verbose:
         invocation.append("--verbose")
     if args.dxpy_upload:

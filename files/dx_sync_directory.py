@@ -136,6 +136,8 @@ def parse_args():
                         '\n' + 'DEFAULT: %s' % (temp_dir) +
                         '\n' +
                         '\n')
+    parser.add_argument('--auth-token', '-a', metavar='<TOKEN>', required=True,
+                        help='Authorization token to use for uploads')
     parser.add_argument('--tar-destination', '-T', metavar='<platform-location>', required=True,
                         help='Remote (platform) project-ID and folder to which to' +
                         '\n' + 'upload tar files.' +
@@ -457,7 +459,7 @@ def upload_tar_files(log, args):
                 if args.verbose:
                     opts += '--verbose '
 
-                ua_command = "ua --project %s --folder %s --do-not-compress --wait-on-close --progress %s %s --chunk-size 25M" % (tar_destination_project, tar_destination_folder, opts, tar_file)
+                ua_command = "ua --project %s --folder %s --do-not-compress --wait-on-close --progress %s %s --auth-token %s --chunk-size 25M" % (tar_destination_project, tar_destination_folder, opts, tar_file, args.auth_token)
                 print >> sys.stderr, ua_command
                 try:
                     dx_file_id = subprocess.check_output(ua_command, shell=True)
