@@ -265,6 +265,9 @@ def run_sync_dir(lane, args, finish=False):
     if not args.upload_thumbnails:
         exclude_patterns.append("Images")
 
+    if args.samplesheet_delay:
+        exclude_patterns.append("SampleSheet.csv")
+
     invocation = ["python", "{curr_dir}/dx_sync_directory.py".format(curr_dir=sys.path[0])]
     invocation.extend(["--log-file", lane["log_path"]])
     invocation.extend(["--tar-destination", args.project + ":" + lane["remote_folder"]])
