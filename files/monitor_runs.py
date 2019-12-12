@@ -32,7 +32,8 @@ CONFIG_DEFAULT = {
     "n_seq_intervals": 2,
     "n_upload_threads": 8,
     "downstream_input": '',
-    "n_streaming_threads":1
+    "n_streaming_threads":1,
+    "delay_sample_sheet_upload": False
 }
 
 # Base folder in which the RUN folders are deposited
@@ -356,6 +357,9 @@ def _trigger_streaming_upload(folder, config):
 
     if 'downstream_input' in config:
         command += ["--downstream-input", config['downstream_input']]
+    
+    if config.get("delay_sample_sheet_upload", False):
+        command.append("-S")
     # Ensure all numerical values are formatted as string
     command = [str(word) for word in command]
 

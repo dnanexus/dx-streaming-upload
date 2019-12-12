@@ -37,3 +37,6 @@ min_interval: 900
 
 # number of concurrent uploads
 n_streaming_threads: 1
+
+# Delay Sample Sheet upload
+delay_sample_sheet_upload: False

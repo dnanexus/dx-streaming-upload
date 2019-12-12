@@ -89,6 +89,8 @@ def parse_args():
             "DNAnexus applet or workflow run after successful upload. Note that " +
             "the input upload_sentinel_record for applet or 0.upload_sentinel_record " +
             "will be overwritten programmatically, even if provided by user.")
+    parser.add_argument("-S", "--samplesheet-delay", action="store_true",
+            help="Delay samplesheet upload until run data is uploaded.")
 
     # Mutually exclusive inputs for verbose loggin (UA) vs dxpy upload
     upload_debug_group = parser.add_mutually_exclusive_group(required=False)
@@ -263,6 +265,9 @@ def run_sync_dir(lane, args, finish=False):
     if not args.upload_thumbnails:
         exclude_patterns.append("Images")
 
+    if args.samplesheet_delay:
+        exclude_patterns.append("SampleSheet.csv")
+
     invocation = ["python", "{curr_dir}/dx_sync_directory.py".format(curr_dir=sys.path[0])]
     invocation.extend(["--log-file", lane["log_path"]])
     invocation.extend(["--tar-destination", args.project + ":" + lane["remote_folder"]])
@@ -275,6 +280,7 @@ def run_sync_dir(lane, args, finish=False):
     invocation.extend(["--max-tar-size", str(args.max_size)])
     invocation.extend(["--upload-threads", str(args.upload_threads)])
     invocation.extend(["--prefix", lane["prefix"]])
+    invocation.extend(["--auth-token", args.api_token])
     if args.verbose:
         invocation.append("--verbose")
     if args.dxpy_upload:
@@ -352,14 +358,16 @@ def main():
                     folder=lane["remote_folder"], parents=True,
                     name=lane["record_name"], properties=properties)
 
-        # upload SampleSheet and RunInfo here, before uploading any data.
-
+        # upload RunInfo here, before uploading any data.
         record = lane["dxrecord"]
         properties = record.get_properties()
         lane["runinfo_file_id"]     = upload_single_file(args.run_dir + "/RunInfo.xml", args.project,
                                          lane["remote_folder"], properties)
-        lane["samplesheet_file_id"] = upload_single_file(args.run_dir + "/SampleSheet.csv", args.project,
-                                         lane["remote_folder"], properties)
+
+        # Upload samplesheet unless samplesheet-delay is specified
+        if not args.samplesheet_delay:
+            lane["samplesheet_file_id"] = upload_single_file(args.run_dir + "/SampleSheet.csv", args.project,
+                                            lane["remote_folder"], properties)
 
     if done_count == len(lane_info):
         print_stderr("EXITING: All lanes already uploaded")
@@ -413,6 +421,11 @@ def main():
             'dnanexus_path': args.project + ":" + lane["remote_folder"],
             'tar_file_ids': file_ids
             }
+
+        # Upload sample sheet here, if samplesheet-delay specified
+        if args.samplesheet_delay:
+            lane["samplesheet_file_id"] = upload_single_file(args.run_dir + "/SampleSheet.csv", args.project,
+                                            lane["remote_folder"], properties)
 
         # ID to singly uploaded file (when uploaded successfully)
         if lane.get("log_file_id"):
