@@ -59,6 +59,7 @@ Example Playbook
       - username: travis
         local_tar_directory: ~/new_location/upload/TMP
         local_log_directory: ~/another_location/upload/LOG
+        exclude_pattern: Analysis
         monitored_directories:
           - ~/runs
         applet: applet-Bq2Kkgj08FqbjV3J8xJ0K3gG

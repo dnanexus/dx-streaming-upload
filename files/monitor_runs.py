@@ -24,6 +24,7 @@ N_INTERVALS_TO_WAIT = 5
 CONFIG_DEFAULT = {
     "log_dir": "/opt/dnanexus/LOGS",
     "tmp_dir": "/opt/dnanexus/TMP",
+    "exclude": "",
     "min_age": 1000,
     "min_size": 1024,
     "min_interval": 1800,
@@ -346,6 +347,9 @@ def _trigger_streaming_upload(folder, config):
                "-u", config['n_upload_threads'],
                "--verbose"]
 
+    if config['exclude'] != '':
+        command += ["-x", config['exclude']]
+
     if 'applet' in config:
         command += ["-A", config['applet']]
 
@@ -368,7 +372,6 @@ def _trigger_streaming_upload(folder, config):
     try:
         inc_out = sub.check_output(command)
     except sub.CalledProcessError, e:
-        print "==ERROR== Incremental upload command {0} failed.\n "\
         "Error code {1}:{2}".format(e.cmd, e.returncode, e.output)
 
 def trigger_streaming_upload(folders, config):
