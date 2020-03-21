@@ -372,6 +372,7 @@ def _trigger_streaming_upload(folder, config):
     try:
         inc_out = sub.check_output(command)
     except sub.CalledProcessError, e:
+        print "==ERROR== Incremental upload command {0} failed.\n "\
         "Error code {1}:{2}".format(e.cmd, e.returncode, e.output)
 
 def trigger_streaming_upload(folders, config):
