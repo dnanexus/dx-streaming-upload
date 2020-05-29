@@ -24,6 +24,7 @@ N_INTERVALS_TO_WAIT = 5
 CONFIG_DEFAULT = {
     "log_dir": "/opt/dnanexus/LOGS",
     "tmp_dir": "/opt/dnanexus/TMP",
+    "exclude": "",
     "min_age": 1000,
     "min_size": 1024,
     "min_interval": 1800,
@@ -345,6 +346,9 @@ def _trigger_streaming_upload(folder, config):
                "-I", config['n_seq_intervals'],
                "-u", config['n_upload_threads'],
                "--verbose"]
+
+    if config['exclude'] != '':
+        command += ["-x", config['exclude']]
 
     if 'applet' in config:
         command += ["-A", config['applet']]

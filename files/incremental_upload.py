@@ -91,6 +91,8 @@ def parse_args():
             "will be overwritten programmatically, even if provided by user.")
     parser.add_argument("-S", "--samplesheet-delay", action="store_true",
             help="Delay samplesheet upload until run data is uploaded.")
+    parser.add_argument("-x", "--exclude-patterns", metavar='<regex>', nargs='*',
+            help="An optional list of regex patterns to exclude.") 
 
     # Mutually exclusive inputs for verbose loggin (UA) vs dxpy upload
     upload_debug_group = parser.add_mutually_exclusive_group(required=False)
@@ -261,7 +263,11 @@ def run_sync_dir(lane, args, finish=False):
         include_patterns = CONFIG_FILES
         include_patterns.append("s_" + lane_num + "_")
     # If upload_thumbnails is specified, upload thumbnails
-    exclude_patterns = []
+    if not args.exclude_patterns:
+        args.exclude_patterns = []
+    
+    exclude_patterns = args.exclude_patterns
+    
     if not args.upload_thumbnails:
         exclude_patterns.append("Images")
 

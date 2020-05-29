@@ -96,6 +96,13 @@
   become_user: "{{ item.username }}"
   when: item.local_log_directory is defined
 
+- name: Change config file's local EXCLUDE pattern
+  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^exclude:.*' line='exclude: \"{{ item.exclude_patterns }}\"'"
+  with_items: "{{ monitored_users }}"
+  become: yes
+  become_user: "{{ item.username }}"
+  when: item.exclude_patterns is defined
+
 - name: Change anticipated run duration
   lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^run_length:.*' line='run_length: \"{{ item.run_length }}\"'"
   with_items: "{{ monitored_users }}"

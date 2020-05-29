@@ -17,6 +17,7 @@ Role Variables
   - `monitored_directories`: (Required)  Path to the local directory that should be monitored for RUN folders. Multiple directories can be listed. Suppose that the folder `20160101_M000001_0001_000000000-ABCDE` is the RUN directory, then the folder structure assumed is `{{monitored_dir}}/20160101_M000001_0001_000000000-ABCDE`
   - `local_tar_directory`: (Optional) Path to a local folder where tarballs of RUN directory is temporarily stored. User specified in `username` need to have **WRITE** access to this folder. There should be sufficient disk space to accomodate a RUN directory in this location. This overwrites the default found in `templates/monitor_run_config.template`.
   - `local_log_directory`: (Optional) Path to a local folder where logs of streaming upload is stored, persistently. User specified in `username` need to have **WRITE** access to this folder. User should not manually manipulate files found in this folder, as the streaming upload code make assumptions that the files in this folder are not manually manipulated. This overwites the default found in `templates/monitor_run_config.template`.
+  - `exclude_patterns`: (Optional) A list of regex patterns to exclude.  If 1 or more regex patterns are given, the files matching the pattern will be skipped (not tarred nor uploaded). The pattern will be matched against the full file path.
   - `delay_sample_sheet_upload`: (Optional) Specify whether the samplesheet for each run should be uploaded before (False) or after (True) the run data is uploaded. Useful if any manipulations are performed on the samplesheet during runtime. Default=False
   - `run_length`: (Optional) Expected duration of a sequencing run, corresponds to the -D paramter in incremental upload (For example, 24h). Acceptable suffix: s, m, h, d, w, M, y.
   - `n_seq_intervals`: (Optional) Number of intervals to wait for run to complete. If the sequencing run has not completed within `n_seq_intervals` * `run_length`, it will be deemed as aborted and the program will not attempt to upload it. Corresponds to the -I parameter in incremental upload.
@@ -59,6 +60,7 @@ Example Playbook
       - username: travis
         local_tar_directory: ~/new_location/upload/TMP
         local_log_directory: ~/another_location/upload/LOG
+        exclude_patterns: Analysis
         monitored_directories:
           - ~/runs
         applet: applet-Bq2Kkgj08FqbjV3J8xJ0K3gG
