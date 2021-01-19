@@ -34,7 +34,8 @@ CONFIG_DEFAULT = {
     "n_upload_threads": 8,
     "downstream_input": '',
     "n_streaming_threads":1,
-    "delay_sample_sheet_upload": False
+    "delay_sample_sheet_upload": False,
+    "novaseq": False
 }
 
 # Base folder in which the RUN folders are deposited
@@ -90,6 +91,9 @@ def parse_args():
                         help='Input for DNAnexus applet/workflow, specified as a JSON string',
                         required=False)
 
+    optionalNamed.add_argument("-n", "--nova-seq", dest="novaseq", action='store_true',
+            help="If Novaseq is used, this parameter has to be used.")
+
     downstreamAnalysis = parser.add_mutually_exclusive_group(required=False)
 
     downstreamAnalysis.add_argument('--applet', '-A',
@@ -134,6 +138,8 @@ def get_streaming_config(config_file, project, applet, workflow, script, token):
     if script:
         config["script"] = os.path.abspath(script)
     user_config_dict = yaml.load(config_file)
+    user_config_dict = user_config_dict[0] # TODO: this was not here previously, but I am unable to run this script in python2 without it.
+
     for key, default in CONFIG_DEFAULT.items():
         config[key] = user_config_dict.get(key, default)
     return config
@@ -347,6 +353,9 @@ def _trigger_streaming_upload(folder, config):
                "-u", config['n_upload_threads'],
                "--verbose"]
 
+    if config['novaseq']:
+        command += ['-n']
+
     if config['exclude'] != '':
         command += ["-x", config['exclude']]
 
@@ -361,7 +370,7 @@ def _trigger_streaming_upload(folder, config):
 
     if 'downstream_input' in config:
         command += ["--downstream-input", config['downstream_input']]
-    
+
     if config.get("delay_sample_sheet_upload", False):
         command.append("-S")
     # Ensure all numerical values are formatted as string
@@ -393,7 +402,6 @@ def main():
     """ Main entry point """
     args = parse_args()
     if DEBUG: print "==DEBUG== Got args, ", args
-
     # Make sure that we can find the incremental_upload scripts
     curr_dir = sys.path[0]
     if (not os.path.isfile("{0}/{1}".format(curr_dir, 'incremental_upload.py')) or
