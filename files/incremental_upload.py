@@ -93,7 +93,7 @@ def parse_args():
             help="Delay samplesheet upload until run data is uploaded.")
     parser.add_argument("-x", "--exclude-patterns", metavar='<regex>', nargs='*',
             help="An optional list of regex patterns to exclude.")
-    parser.add_argument("-n", "--nova-seq", dest="novaseq", action='store_true',
+    parser.add_argument("-n", "--novaseq", dest="novaseq", action='store_true',
             help="If Novaseq is used, this parameter has to be used.")
 
 
