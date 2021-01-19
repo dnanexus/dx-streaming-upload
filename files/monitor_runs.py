@@ -91,9 +91,6 @@ def parse_args():
                         help='Input for DNAnexus applet/workflow, specified as a JSON string',
                         required=False)
 
-    optionalNamed.add_argument("-n", "--nova-seq", dest="novaseq", action='store_true',
-            help="If Novaseq is used, this parameter has to be used.")
-
     downstreamAnalysis = parser.add_mutually_exclusive_group(required=False)
 
     downstreamAnalysis.add_argument('--applet', '-A',
@@ -402,6 +399,7 @@ def main():
     """ Main entry point """
     args = parse_args()
     if DEBUG: print "==DEBUG== Got args, ", args
+
     # Make sure that we can find the incremental_upload scripts
     curr_dir = sys.path[0]
     if (not os.path.isfile("{0}/{1}".format(curr_dir, 'incremental_upload.py')) or

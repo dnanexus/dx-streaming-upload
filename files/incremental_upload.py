@@ -254,7 +254,6 @@ def upload_single_file(filepath, project, folder, properties):
         print_stderr("Failed to upload local file %s to %s:%s" %(filepath, project, folder))
         return None
 
-
 def run_sync_dir(lane, args, finish=False):
     # Set list of config files to include (only if lanes are specified)
     CONFIG_FILES = ["RTAConfiguration.xml", "RunInfo.xml", "RunParameters.xml",
@@ -378,7 +377,7 @@ def main():
         else:
             lane["runinfo_file_id"] = runInfo["id"]
 
-        # Upload samplesheet unless samplesheet-delay is specified
+        # Upload samplesheet unless samplesheet-delay is specified or it is already uploaded.
         if not args.samplesheet_delay:
             sampleSheet = dxpy.find_one_data_object(zero_ok=True, name="SampleSheet.csv", project=args.project, folder=lane["remote_folder"])
             if not sampleSheet:
@@ -391,7 +390,7 @@ def main():
         sys.exit(1)
 
     seconds_to_wait = (dxpy.utils.normalize_timedelta(args.run_duration) / 1000 * args.intervals_to_wait)
-    print_stderr("Maximum allowable time for run to complete: %d seconds." % seconds_to_wait)
+    print_stderr("Maximum allowable time for run to complete: %d seconds." %seconds_to_wait)
 
     initial_start_time = time.time()
     # While loop waiting for RTAComplete.txt or RTAComplete.xml
