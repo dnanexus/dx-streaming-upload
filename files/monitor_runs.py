@@ -135,7 +135,6 @@ def get_streaming_config(config_file, project, applet, workflow, script, token):
     if script:
         config["script"] = os.path.abspath(script)
     user_config_dict = yaml.load(config_file)
-    user_config_dict = user_config_dict[0] # TODO: this was not here previously, but I am unable to run this script in python2 without it.
 
     for key, default in CONFIG_DEFAULT.items():
         config[key] = user_config_dict.get(key, default)
