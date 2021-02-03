@@ -180,7 +180,7 @@ def get_run_folders(base_dir):
             if os.path.isdir(os.path.join(base_dir, dir_name))
             and not dir_name.startswith(".")]
 
-def check_local_runs(base_dir, run_folders, run_length, n_intervals):
+def check_local_runs(base_dir, run_folders, run_length, n_intervals, novaseq=False):
     """ Check local folders to ascertain which are Illumina RUN directories (defined
     as containing a RunInfo.xml file in root of the folder).
     Classify such RUN folders into 3 classes:
@@ -201,8 +201,9 @@ def check_local_runs(base_dir, run_folders, run_length, n_intervals):
                 not_run_folders.append(run_folder)
         else:
             # Is a RUN folder
-            if (os.path.isfile(os.path.join(folder_path, 'RTAComplete.txt')) or
-                os.path.isfile(os.path.join(folder_path, 'RTAComplete.xml'))):
+            if os.path.isfile(os.path.join(folder_path, 'RTAComplete.txt')) or \
+                os.path.isfile(os.path.join(folder_path, 'RTAComplete.xml')) or \
+                (novaseq and os.path.isfile(os.path.join(folder_path, 'CopyComplete.txt'))):
                 # Is a completed RUN folder
                 completed_runs.append(run_folder)
             else:
@@ -422,7 +423,7 @@ def main():
 
     (not_runs, completed_runs, ongoing_runs, stale_runs) = check_local_runs(args.directory, run_folders,
                                                                   streaming_config['run_length'],
-                                                                  streaming_config['n_seq_intervals'])
+                                                                  streaming_config['n_seq_intervals'], streaming_config.get("novaseq", False))
 
     if DEBUG:
         print "==DEBUG== Searching for run directories in {0}:".format(args.directory)
