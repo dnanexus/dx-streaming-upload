@@ -92,7 +92,10 @@ def parse_args():
     parser.add_argument("-S", "--samplesheet-delay", action="store_true",
             help="Delay samplesheet upload until run data is uploaded.")
     parser.add_argument("-x", "--exclude-patterns", metavar='<regex>', nargs='*',
-            help="An optional list of regex patterns to exclude.") 
+            help="An optional list of regex patterns to exclude.")
+    parser.add_argument("-n", "--novaseq", dest="novaseq", action='store_true',
+            help="If Novaseq is used, this parameter has to be used.")
+
 
     # Mutually exclusive inputs for verbose loggin (UA) vs dxpy upload
     upload_debug_group = parser.add_mutually_exclusive_group(required=False)
@@ -265,9 +268,9 @@ def run_sync_dir(lane, args, finish=False):
     # If upload_thumbnails is specified, upload thumbnails
     if not args.exclude_patterns:
         args.exclude_patterns = []
-    
+
     exclude_patterns = args.exclude_patterns
-    
+
     if not args.upload_thumbnails:
         exclude_patterns.append("Images")
 
@@ -364,16 +367,23 @@ def main():
                     folder=lane["remote_folder"], parents=True,
                     name=lane["record_name"], properties=properties)
 
-        # upload RunInfo here, before uploading any data.
+        # upload RunInfo here, before uploading any data, unless it is already uploaded.
         record = lane["dxrecord"]
         properties = record.get_properties()
-        lane["runinfo_file_id"]     = upload_single_file(args.run_dir + "/RunInfo.xml", args.project,
-                                         lane["remote_folder"], properties)
 
-        # Upload samplesheet unless samplesheet-delay is specified
+        runInfo = dxpy.find_one_data_object(zero_ok=True, name="RunInfo.xml", project=args.project, folder=lane["remote_folder"])
+        if not runInfo:
+            lane["runinfo_file_id"] = upload_single_file(args.run_dir + "/RunInfo.xml", args.project, lane["remote_folder"], properties)
+        else:
+            lane["runinfo_file_id"] = runInfo["id"]
+
+        # Upload samplesheet unless samplesheet-delay is specified or it is already uploaded.
         if not args.samplesheet_delay:
-            lane["samplesheet_file_id"] = upload_single_file(args.run_dir + "/SampleSheet.csv", args.project,
-                                            lane["remote_folder"], properties)
+            sampleSheet = dxpy.find_one_data_object(zero_ok=True, name="SampleSheet.csv", project=args.project, folder=lane["remote_folder"])
+            if not sampleSheet:
+                lane["samplesheet_file_id"] = upload_single_file(args.run_dir + "/SampleSheet.csv", args.project, lane["remote_folder"], properties)
+            else:
+                lane["runinfo_file_id"] = sampleSheet["id"]
 
     if done_count == len(lane_info):
         print_stderr("EXITING: All lanes already uploaded")
@@ -384,10 +394,10 @@ def main():
 
     initial_start_time = time.time()
     # While loop waiting for RTAComplete.txt or RTAComplete.xml
-    while (not os.path.isfile(os.path.join(args.run_dir, "RTAComplete.txt"))
-        and not os.path.isfile(os.path.join(args.run_dir, "RTAComplete.xml"))):
+    while not os.path.isfile(os.path.join(args.run_dir, "RTAComplete.txt")) and \
+        not os.path.isfile(os.path.join(args.run_dir, "RTAComplete.xml")) and \
+        (not args.novaseq or not os.path.isfile(os.path.join(args.run_dir, "CopyComplete.txt"))):
         start_time=time.time()
-
         run_time = start_time - initial_start_time
         # Fail if run time exceeds total time to wait
         if run_time > seconds_to_wait:
