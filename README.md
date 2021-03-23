@@ -19,8 +19,11 @@ Role Variables
   - `local_log_directory`: (Optional) Path to a local folder where logs of streaming upload is stored, persistently. User specified in `username` need to have **WRITE** access to this folder. User should not manually manipulate files found in this folder, as the streaming upload code make assumptions that the files in this folder are not manually manipulated. This overwites the default found in `templates/monitor_run_config.template`.
   - `exclude_patterns`: (Optional) A list of regex patterns to exclude.  If 1 or more regex patterns are given, the files matching the pattern will be skipped (not tarred nor uploaded). The pattern will be matched against the full file path.
   - `delay_sample_sheet_upload`: (Optional) Specify whether the samplesheet for each run should be uploaded before (False) or after (True) the run data is uploaded. Useful if any manipulations are performed on the samplesheet during runtime. Default=False
+  - `novaseq`: (Optional) Specify whether streaming from Novaseq instrument to determine sequencing completion. (False) RTAComplete.txt/xml file triggers sequencing completion; (True) CopyComplete.txt file triggers sequencing completion. Default=False
+  - `min_size`: (Optional) The minimum size of the TAR file before it will be uploaded (in MB). Default=500
+  - `max_size`: (Optional) The maximum size of the TAR file to be uploaded (in MB). Default=10000
   - `run_length`: (Optional) Expected duration of a sequencing run, corresponds to the -D paramter in incremental upload (For example, 24h). Acceptable suffix: s, m, h, d, w, M, y.
-  - `n_seq_intervals`: (Optional) Number of intervals to wait for run to complete. If the sequencing run has not completed within `n_seq_intervals` * `run_length`, it will be deemed as aborted and the program will not attempt to upload it. Corresponds to the -I parameter in incremental upload.
+  - `n_seq_intervals`: (Optional) Number of intervals to wait for run to complete. If the sequencing run has not completed within `n_seq_intervals` * `run_length`, it will be deemed as aborted and the program will not attempt to upload it. Corresponds to the -I parameter in incremental uploiad.
   - `n_upload_threads`: (Optional) Number of upload threads used by Upload Agent. For sites with severe upload bandwidth limitations (<100kb/s), it is advised to reduce this to 1, to increase robustness of upload in face of possible network disruptions. Default=8.
   - `script`: (Optional) File path to an executable script to be triggered after successful upload for the RUN directory. The script must be executable by the user specified by `username`. The script will be triggered in the with a single command line argument, correpsonding to the filepath of the RUN directory (see section *Example Script*). **If the file path to the script given does not point to a file, or if the file is not executable by the user, then the upload process will not commence.**
   - `dx_user_token`: (Optional) API token associated with the specific `monitored_user`. This overrides the value `dx_token`. If `dx_user_token` is not specified, defaults to `dx_token`.
@@ -65,6 +68,9 @@ Example Playbook
           - ~/runs
         applet: applet-Bq2Kkgj08FqbjV3J8xJ0K3gG
         downstream_input: '{"sequencing_center": "CENTER_A"}'
+        min_size: 250
+        max_size: 1000
+        novaseq: True
       - username: root
         monitored_directories:
           - ~/home/root/runs
@@ -124,7 +130,7 @@ For a workflow the `executable_input` hash will be prepoluated with the key-valu
 
 **It is the user's responsibility to ensure that the specified applet/workflow has an appropriate input contract which accepts a DNAnexus record with the input name of `upload_sentinel_record`**
 
-Additional input/options can be specified, statically using the Ansible variable `downstream_input`. This should be provided as a JSON string, parsable, at the top level, as a Python dict of `str` to `str`. 
+Additional input/options can be specified, statically using the Ansible variable `downstream_input`. This should be provided as a JSON string, parsable, at the top level, as a Python dict of `str` to `str`.
 
 Example of a properly formatted `downstream_input` for an `applet`
 - ```{"input_name1": "value1", "input_name2": "value2"}```

@@ -36,6 +36,9 @@ n_upload_threads: 8
 # the minimum size needed to upload a chunk (in MB)
 min_size: 500
 
+# the maximum size of the tarball (in MB)
+max_size: 10000
+
 # min sync check interval (in seconds)
 min_interval: 900
 
@@ -44,3 +47,6 @@ n_streaming_threads: 1
 
 # Delay Sample Sheet upload
 delay_sample_sheet_upload: False
+
+# Novaseq flag
+novaseq: False
