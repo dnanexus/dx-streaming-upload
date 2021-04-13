@@ -383,7 +383,7 @@ def main():
             if not sampleSheet:
                 lane["samplesheet_file_id"] = upload_single_file(args.run_dir + "/SampleSheet.csv", args.project, lane["remote_folder"], properties)
             else:
-                lane["runinfo_file_id"] = sampleSheet["id"]
+                lane["samplesheet_file_id"] = sampleSheet["id"]
 
     if done_count == len(lane_info):
         print_stderr("EXITING: All lanes already uploaded")

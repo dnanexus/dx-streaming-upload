@@ -73,7 +73,7 @@ def parse_args():
                         help='DNAnexus project ID to upload to',
                         required=True)
 
-    requiredNamed.add_argument('--directory', '-d',
+    requiredNamed.add_argument('--directory', '-d', nargs="+",
                         help='Local directory to monitor for new RUN folder(s)',
                         required=True)
 
