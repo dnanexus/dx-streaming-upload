@@ -1,8 +1,8 @@
 ---
 # Install Dx-toolkit
-- name: Get DX tarball
+- name: Get DX toolkit
   pip:
-    requirements: requirements.txt
+    requirements: /opt/dx-streaming-upload/requirements.txt
 
 # http://stackoverflow.com/questions/22256884/not-possible-to-source-bashrc-with-ansible
 - name: check dx version
