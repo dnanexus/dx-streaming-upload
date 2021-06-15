@@ -121,7 +121,7 @@ def get_dx_auth_token():
     try:
         return dxpy.SECURITY_CONTEXT['auth_token']
 
-    except KeyError, e:
+    except KeyError as e:
         sys.exit("Could not parse auth_token in dxpy environment, ensure that you have logged in using an API token!\n{0}: {1}".format(e.errno, e.strerror))
 
 
@@ -137,7 +137,7 @@ def get_streaming_config(config_file, project, applet, workflow, script, token):
         config["script"] = os.path.abspath(script)
     user_config_dict = yaml.load(config_file)
 
-    for key, default in CONFIG_DEFAULT.items():
+    for key, default in list(CONFIG_DEFAULT.items()):
         config[key] = user_config_dict.get(key, default)
     return config
 
@@ -157,7 +157,7 @@ def check_config_fields(config):
         if (not os.path.isdir(config[r_dir])):
             try:
                 os.makedirs(config[r_dir])
-            except OSError, e:
+            except OSError as e:
                 invalid_config("Specified {0} ({1}) could not be created".format(r_dir, config[r_dir]))
 
     input_json = config["downstream_input"]
@@ -214,9 +214,9 @@ def check_local_runs(base_dir, run_folders, run_length, n_intervals, novaseq=Fal
                 time_to_wait = dxpy.utils.normalize_timedelta(run_length) / 1000 * n_intervals
                 if (curr_time - created_time) > time_to_wait:
                     # Stale run
-                    if DEBUG: print "==DEBUG== run folder {0} was created on {1}; "\
+                    if DEBUG: print("==DEBUG== run folder {0} was created on {1}; "\
                     "it is determined to be STALE and will NOT be uploaded.".format(run_folder,
-                        time.strftime("%Z - %Y/%m/%d, %H:%M:%S", time.localtime(created_time)))
+                        time.strftime("%Z - %Y/%m/%d, %H:%M:%S", time.localtime(created_time))))
 
                     stale_runs.append(run_folder)
                 else:
@@ -232,29 +232,29 @@ def check_dnax_folders(run_folders, project):
     try:
         dx_proj = dxpy.bindings.DXProject(project)
 
-    except dxpy.exceptions.DXError, e:
+    except dxpy.exceptions.DXError as e:
         sys.exit("Invalid project ID ({0}) given. {1}".format(project, str(e)))
 
     try:
         dnax_folders = dx_proj.list_folder(RUN_UPLOAD_DEST, only="folders")['folders']
         dnax_folders = [os.path.basename(folder) for folder in dnax_folders]
 
-        synced_folders = filter( (lambda folder: folder in dnax_folders), run_folders)
-        unsynced_folders = filter( (lambda folder: folder not in dnax_folders), run_folders)
+        synced_folders = list(filter( (lambda folder: folder in dnax_folders), run_folders))
+        unsynced_folders = list(filter( (lambda folder: folder not in dnax_folders), run_folders))
 
         return (synced_folders, unsynced_folders)
 
     # RUN_UPLOAD_DEST is not a valid directory in project
     # ie, incremental upload has never been triggered in this project
     # All RUN folders are considered to be unsynced
-    except dxpy.exceptions.ResourceNotFound, e:
-        if DEBUG: print "==DEBUG== {0} not found in project {1}".format(RUN_UPLOAD_DEST, project)
-        if DEBUG: print "==DEBUG== Interpreting this as all local RUN folders are unsynced"
+    except dxpy.exceptions.ResourceNotFound as e:
+        if DEBUG: print("==DEBUG== {0} not found in project {1}".format(RUN_UPLOAD_DEST, project))
+        if DEBUG: print("==DEBUG== Interpreting this as all local RUN folders are unsynced")
         return ([], run_folders)
 
     # Dict returned by list_folder did not contian a "folders" key
     # This is an unexpected exception
-    except KeyError, e:
+    except KeyError as e:
         sys.exit("Unknown exception when fetching folders in {0} of {1}. {2}: {3}.".format(
                   RUN_UPLOAD_DEST, project, e.errno, e.strerror))
 
@@ -270,7 +270,7 @@ def find_record(run_name, project):
 
     # Either zero or multiple records found, in cases where we cannot resolve uniquely
     # the upload sentinel, we exit the program with an error
-    except dxpy.exceptions.DXSearchError, e:
+    except dxpy.exceptions.DXSearchError as e:
         sys.exit("Unexpected result when searching for upload sentinel of run {0}. {1}".format(run_name, e))
 
 
@@ -285,11 +285,11 @@ def local_upload_has_lapsed(folder, config):
         # Could not find a local log file for the run-folder for which the upload has been initiated
         # The log file could have been moved or deleted. Treat this as an lapsed upload
         if DEBUG:
-            print "==INFO== Local log file could not be found for "\
+            print("==INFO== Local log file could not be found for "\
                     "{run} at {folder}""".format(run=folder,
-                                             folder='{0}/{1}'.format(config['log_dir'], folder))
-            print "==INFO== Treating run {0} as a lapsed local upload, "\
-                   "and will reinitiate streaming upload""".format(folder)
+                                             folder='{0}/{1}'.format(config['log_dir'], folder)))
+            print("==INFO== Treating run {0} as a lapsed local upload, "\
+                   "and will reinitiate streaming upload""".format(folder))
 
         return True
 
@@ -298,11 +298,11 @@ def local_upload_has_lapsed(folder, config):
         # log as the accurate one. NOTE: This script does not currently support upload by lane
         # so we do *NOT* anticipate multiple records per run folder
         if DEBUG:
-            print "==INFO== Found {n} log files for run {run} in folder {folder}."\
+            print("==INFO== Found {n} log files for run {run} in folder {folder}."\
                    "Using the latest log. The log files are {files}.".format(n=len(local_log_files),
                                                                             run=folder,
                                                                             folder='{0}/{1}'.format(config['log_dir'], folder),
-                                                                            files=local_log_files)
+                                                                            files=local_log_files))
     # Get most recently modified file's mod time
     mod_time = max([os.path.getmtime(path) for path in local_log_files])
     elapsed_time = time.time() - mod_time
@@ -325,7 +325,7 @@ def check_complete_sync(synced_folders, config):
                 if (local_upload_has_lapsed(folder, config)):
                     incomplete_syncs.append(folder)
 
-        except KeyError, e:
+        except KeyError as e:
             sys.exit("Unknown exception when getting state of record {0}. {1}: {2}".format(sentinel_record, e.errno, e.strerror))
 
     return incomplete_syncs
@@ -375,20 +375,20 @@ def _trigger_streaming_upload(folder, config):
     # Ensure all numerical values are formatted as string
     command = [str(word) for word in command]
 
-    print "==INFO== Triggering incremental upload command: {0}".format(
-        ' '.join(command))
+    print("==INFO== Triggering incremental upload command: {0}".format(
+        ' '.join(command)))
     try:
         inc_out = sub.check_output(command)
-    except sub.CalledProcessError, e:
-        print "==ERROR== Incremental upload command {0} failed.\n "\
-        "Error code {1}:{2}".format(e.cmd, e.returncode, e.output)
+    except sub.CalledProcessError as e:
+        print("==ERROR== Incremental upload command {0} failed.\n "\
+        "Error code {1}:{2}".format(e.cmd, e.returncode, e.output))
 
 def trigger_streaming_upload(folders, config):
     """ Open a thread pool of size N_STREAMING_THREADS
     and trigger streaming upload for all unsynced and incomplete folders"""
     pool = multiprocessing.Pool(processes=int(config["n_streaming_threads"]))
     for folder in folders:
-        print "Adding folder {0} to pool".format(folder)
+        print("Adding folder {0} to pool".format(folder))
         pool.apply_async(_trigger_streaming_upload, args=(folder, config)).get()
 
     # Close pool, no more tasks can be added
@@ -400,7 +400,7 @@ def trigger_streaming_upload(folders, config):
 def main():
     """ Main entry point """
     args = parse_args()
-    if DEBUG: print "==DEBUG== Got args, ", args
+    if DEBUG: print("==DEBUG== Got args, ", args)
 
     # Make sure that we can find the incremental_upload scripts
     curr_dir = sys.path[0]
@@ -409,46 +409,46 @@ def main():
         sys.exit("Failed to locate necessary scripts for incremental upload")
 
     token = get_dx_auth_token()
-    if DEBUG: print "==DEBUG== Got token: ", token
+    if DEBUG: print("==DEBUG== Got token: ", token)
 
     run_folders = get_run_folders(args.directory)
-    if DEBUG: print "==DEBUG== Got RUN folders: ", run_folders
+    if DEBUG: print("==DEBUG== Got RUN folders: ", run_folders)
 
     streaming_config = get_streaming_config(args.config, args.project,
                                             args.applet, args.workflow,
                                             args.script, token)
 
-    if DEBUG: print "==DEBUG== Got config: ", streaming_config
+    if DEBUG: print("==DEBUG== Got config: ", streaming_config)
 
     streaming_config = check_config_fields(streaming_config)
-    if DEBUG: print "==DEBUG== Validated config: ", streaming_config
+    if DEBUG: print("==DEBUG== Validated config: ", streaming_config)
 
     (not_runs, completed_runs, ongoing_runs, stale_runs) = check_local_runs(args.directory, run_folders,
                                                                   streaming_config['run_length'],
                                                                   streaming_config['n_seq_intervals'], streaming_config.get("novaseq", False))
 
     if DEBUG:
-        print "==DEBUG== Searching for run directories in {0}:".format(args.directory)
+        print("==DEBUG== Searching for run directories in {0}:".format(args.directory))
         if not_runs:
-            print "==DEBUG== Following folders are deemed NOT to be run directories: {0}".format(not_runs)
+            print("==DEBUG== Following folders are deemed NOT to be run directories: {0}".format(not_runs))
         if completed_runs:
-            print "==DEBUG== Following folders are deemed to be COMPLETED runs: {0}".format(completed_runs)
+            print("==DEBUG== Following folders are deemed to be COMPLETED runs: {0}".format(completed_runs))
         if ongoing_runs:
-            print "==DEBUG== Following folders are deemed to be ONGOING runs: {0}".format(ongoing_runs)
+            print("==DEBUG== Following folders are deemed to be ONGOING runs: {0}".format(ongoing_runs))
         if stale_runs:
-            print "==DEBUG== Following folders are deeemed to be STALE runs "\
-            "and will not be uploaded: {0}".format(stale_runs)
+            print("==DEBUG== Following folders are deeemed to be STALE runs "\
+            "and will not be uploaded: {0}".format(stale_runs))
 
     syncable_folders = completed_runs + ongoing_runs
     (synced_folders, unsynced_folders) = check_dnax_folders(syncable_folders, args.project)
-    if DEBUG: print "==DEBUG== Got synced folders: ", synced_folders
-    if DEBUG: print "==DEBUG== Got unsynced folders: ", unsynced_folders
+    if DEBUG: print("==DEBUG== Got synced folders: ", synced_folders)
+    if DEBUG: print("==DEBUG== Got unsynced folders: ", unsynced_folders)
 
     folders_to_sync = []
     if synced_folders:
         incomplete_syncs = check_complete_sync(synced_folders, streaming_config)
         folders_to_sync += incomplete_syncs
-        if DEBUG: print "==DEBUG== Got incomplete folders: ", incomplete_syncs
+        if DEBUG: print("==DEBUG== Got incomplete folders: ", incomplete_syncs)
 
     # Preferentially upload partially-synced folders before unsynced ones
     folders_to_sync += unsynced_folders

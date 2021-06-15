@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from __future__ import print_function
+
 import sys
 import os
 import subprocess as sub
@@ -467,9 +467,9 @@ def main():
         if not isinstance(input_dict, dict):
             raise_error("Expected a dict for downstream input. Got %s." %input_dict)
 
-        for k, v in input_dict.items():
-            if not ((isinstance(k, str) or isinstance(k, basestring)) and
-                    (isinstance(v, str) or isinstance(v, basestring) or isinstance(v, dict))):
+        for k, v in list(input_dict.items()):
+            if not ((isinstance(k, str) or isinstance(k, str)) and
+                    (isinstance(v, str) or isinstance(v, str) or isinstance(v, dict))):
                     raise_error("Expected (string) key and (string or dict) value pairs for downstream input. Got (%s)%s (%s)%s" %(type(k), k, type(v), v))
 
             downstream_input[k] = v
@@ -554,7 +554,7 @@ def main():
         # script has been validated to be executable earlier, assume no change
         try:
             sub.check_call([args.script, args.run_dir])
-        except sub.CalledProcessError, e:
+        except sub.CalledProcessError as e:
             raise_error("Executable (%s) failed with error %d: %s" %(args.script, e.returncode, e.output))
 
 
