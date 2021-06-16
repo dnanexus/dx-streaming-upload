@@ -135,7 +135,8 @@ def get_streaming_config(config_file, project, applet, workflow, script, token):
         config["workflow"] = workflow
     if script:
         config["script"] = os.path.abspath(script)
-    user_config_dict = yaml.load(config_file)
+
+    user_config_dict = yaml.load(config_file, Loader=yaml.FullLoader)
 
     for key, default in list(CONFIG_DEFAULT.items()):
         config[key] = user_config_dict.get(key, default)
