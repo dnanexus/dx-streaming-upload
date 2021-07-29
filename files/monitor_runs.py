@@ -379,7 +379,7 @@ def _trigger_streaming_upload(folder, config):
     print("==INFO== Triggering incremental upload command: {0}".format(
         ' '.join(command)))
     try:
-        inc_out = sub.check_output(command)
+        inc_out = sub.run(command, check=True, stdout=sub.PIPE, universal_newlines=True).stdout
     except sub.CalledProcessError as e:
         print("==ERROR== Incremental upload command {0} failed.\n "\
         "Error code {1}:{2}".format(e.cmd, e.returncode, e.output))

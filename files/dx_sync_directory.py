@@ -462,8 +462,8 @@ def upload_tar_files(log, args):
                 ua_command = "ua --project %s --folder %s --do-not-compress --wait-on-close --progress %s %s --auth-token %s --chunk-size 25M" % (tar_destination_project, tar_destination_folder, opts, tar_file, args.auth_token)
                 print(ua_command, file=sys.stderr)
                 try:
-                    dx_file_id = subprocess.check_output(ua_command, shell=True)
-                    dx_file_id = dx_file_id.strip()
+                    ua_process = subprocess.run(ua_command, shell=True, check=True, stdout=subprocess.PIPE, universal_newlines=True)
+                    dx_file_id = ua_process.stdout.strip()
                 except subprocess.CalledProcessError:
                     sys.exit("ERROR: Tar file %s was not uploaded. Please check log for progress and rerun script" % tar_file)
             upload_end = time.time()
