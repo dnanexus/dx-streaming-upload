@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import argparse
 import dxpy
@@ -337,7 +337,7 @@ def _trigger_streaming_upload(folder, config):
     instances of this can be triggered using a thread pool"""
     curr_dir = sys.path[0]
     inc_upload_script_loc = "{0}/{1}".format(curr_dir, "incremental_upload.py")
-    command = ["python", inc_upload_script_loc,
+    command = ["python3", inc_upload_script_loc,
                "-a", config['token'],
                "-p", config['project'],
                "-r", folder,

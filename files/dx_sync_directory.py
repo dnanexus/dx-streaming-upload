@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """
 Script to 'sync' a local directory into the platform. This does not
@@ -20,7 +20,7 @@ import dxpy
 import dxpy.utils.resolver
 
 # For more information about script and inputs run the script with --help option
-# $ python dx_sync_directory.py --help
+# $ python3 dx_sync_directory.py --help
 #
 # Log file structure:
 #

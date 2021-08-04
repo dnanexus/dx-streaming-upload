@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 
 import sys
@@ -186,7 +186,7 @@ def check_input(args):
     try:
         # We assume that dx_sync_directory is located in the same folder as this script
         # This is resolved by absolute path of invocation
-        sub.check_call(['python', '{curr_dir}/dx_sync_directory.py'.format(curr_dir=sys.path[0]), '-h'],
+        sub.check_call(['python3', '{curr_dir}/dx_sync_directory.py'.format(curr_dir=sys.path[0]), '-h'],
                 stdout=open(os.devnull, 'w'), close_fds=True)
     except sub.CalledProcessError:
         raise_error("dx_sync_directory.py not found. Please run incremental " +
@@ -278,7 +278,7 @@ def run_sync_dir(lane, args, finish=False):
     if args.samplesheet_delay:
         exclude_patterns.append("SampleSheet.csv")
 
-    invocation = ["python", "{curr_dir}/dx_sync_directory.py".format(curr_dir=sys.path[0])]
+    invocation = ["python3", "{curr_dir}/dx_sync_directory.py".format(curr_dir=sys.path[0])]
     invocation.extend(["--log-file", lane["log_path"]])
     invocation.extend(["--tar-destination", args.project + ":" + lane["remote_folder"]])
     invocation.extend(["--tar-directory", args.temp_dir])
