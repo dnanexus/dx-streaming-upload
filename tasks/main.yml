@@ -21,7 +21,7 @@
 
 - name: Download and unzip UA tarball
   unarchive:
-    src: https://dnanexus-sdk.s3.amazonaws.com/dnanexus-upload-agent-1.5.33-linux.tar.gz
+    src: "https://dnanexus-sdk.s3.amazonaws.com/dnanexus-upload-agent-{{ ua_version }}-linux.tar.gz"
     dest: /opt/dnanexus-upload-agent
     copy: no
 
