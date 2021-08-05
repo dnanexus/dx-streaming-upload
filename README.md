@@ -23,7 +23,7 @@ Role Variables
   - `min_size`: (Optional) The minimum size of the TAR file before it will be uploaded (in MB). Default=500
   - `max_size`: (Optional) The maximum size of the TAR file to be uploaded (in MB). Default=10000
   - `run_length`: (Optional) Expected duration of a sequencing run, corresponds to the -D paramter in incremental upload (For example, 24h). Acceptable suffix: s, m, h, d, w, M, y.
-  - `n_seq_intervals`: (Optional) Number of intervals to wait for run to complete. If the sequencing run has not completed within `n_seq_intervals` * `run_length`, it will be deemed as aborted and the program will not attempt to upload it. Corresponds to the -I parameter in incremental uploiad.
+  - `n_seq_intervals`: (Optional) Number of intervals to wait for run to complete. If the sequencing run has not completed within `n_seq_intervals` * `run_length`, it will be deemed as aborted and the program will not attempt to upload it. Corresponds to the -I parameter in incremental upload.
   - `n_upload_threads`: (Optional) Number of upload threads used by Upload Agent. For sites with severe upload bandwidth limitations (<100kb/s), it is advised to reduce this to 1, to increase robustness of upload in face of possible network disruptions. Default=8.
   - `script`: (Optional) File path to an executable script to be triggered after successful upload for the RUN directory. The script must be executable by the user specified by `username`. The script will be triggered in the with a single command line argument, correpsonding to the filepath of the RUN directory (see section *Example Script*). **If the file path to the script given does not point to a file, or if the file is not executable by the user, then the upload process will not commence.**
   - `dx_user_token`: (Optional) API token associated with the specific `monitored_user`. This overrides the value `dx_token`. If `dx_user_token` is not specified, defaults to `dx_token`.
@@ -35,11 +35,11 @@ Role Variables
 
 Dependencies
 ------------
-Python 2.7 is needed. This program is not compatible with Python 3.X.
+Python 3.5 or higher is needed.
 
 Minimal Ansible version: 2.0.
 
-This program is intended for Ubuntu 14.04 (Trusty) and has been tested on the 15.10 (Wily) release. Most features should work on a Ubuntu 12.04 (Precise) system, but this has not been tested to date.
+This program is intended for Ubuntu 20.04 (Focal Fossa) and has been tested on the 20.04 release.
 
 
 Requirements
