@@ -469,8 +469,7 @@ def main():
             raise_error("Expected a dict for downstream input. Got %s." %input_dict)
 
         for k, v in list(input_dict.items()):
-            if not ((isinstance(k, str) or isinstance(k, str)) and
-                    (isinstance(v, str) or isinstance(v, str) or isinstance(v, dict))):
+            if not (isinstance(k, str) and (isinstance(v, str) or isinstance(v, dict))):
                     raise_error("Expected (string) key and (string or dict) value pairs for downstream input. Got (%s)%s (%s)%s" %(type(k), k, type(v), v))
 
             downstream_input[k] = v

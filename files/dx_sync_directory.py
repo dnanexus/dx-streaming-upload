@@ -301,15 +301,14 @@ def read_log(args):
         with open(args.log_file, 'r') as logf:
             return json.load(logf)
     else:
-        print('  Log file not found, returning empty log.', file=sys.stderr)
+        print('Log file not found, returning empty log.', file=sys.stderr)
         return {'tar_files': {}, 'next_tar_index': 0, 'files': {},
                 'tar_destination': args.tar_destination, 'file_prefix': args.prefix,
                 'sync_dir': args.sync_dir, 'include_patterns': args.include_patterns,
                 'exclude_patterns': args.exclude_patterns}
-    return log
 
 def check_log(log, args):
-    print(( '\n--- Checking that log matches inputs' ), file=sys.stderr)
+    print('\n--- Checking that log matches inputs', file=sys.stderr)
     try:
         log_sync_dir = log['sync_dir']
         if log_sync_dir != args.sync_dir:
@@ -332,10 +331,9 @@ def check_log(log, args):
                      (args.exclude_patterns, log_exclude))
 
         # Check that log has correct keys
-        log_tar_files = log['tar_files']
-        log_next_tar_index = log['next_tar_index']
-        log_files = log['files']
-        log_file_prefix = log['file_prefix']
+        if all (k in log for k in ("tar_files","next_tar_index", "files", "file_prefix")):
+            print('\n--- All required keys present in log', file=sys.stderr)
+    
     except KeyError as e:
         sys.exit('ERROR: Invalid log file. Log does not have "%s" key' % (e))
 
@@ -393,9 +391,9 @@ def split_into_tar_files(files_to_upload, log, args):
     tars_to_upload.append(current_tar)
 
     if total_size < args.min_tar_size:
-        print(('QUITTING: Size of files to upload is not big ' +
+        print('QUITTING: Size of files to upload is not big ' +
                 'enough to to be uploaded yet. Please run again later or ' +
-                'specify --min-tar-size to be smaller'), file=sys.stderr)
+                'specify --min-tar-size to be smaller', file=sys.stderr)
         return []
 
     return tars_to_upload
