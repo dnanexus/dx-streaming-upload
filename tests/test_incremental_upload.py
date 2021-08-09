@@ -12,7 +12,6 @@ import incremental_upload as iu
 
 def create_files(rtacomplete_txt, rtacomplete_xml, copycomplete_txt):
     tmp_folder = tempfile.mkdtemp()
-    print(tmp_folder)
     if rtacomplete_txt:
         with open(tmp_folder + "/RTAComplete.txt", 'w') as RTAComplete_txt:
             RTAComplete_txt.write("foo")
