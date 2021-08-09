@@ -304,6 +304,12 @@ def run_sync_dir(lane, args, finish=False):
     output = run_command_with_retry(args.retries, invocation)
     return output.split()
 
+def is_still_uploading(novaseq, run_dir):
+    if not novaseq:
+        return not(os.path.isfile(os.path.join(run_dir, "RTAComplete.txt")) or os.path.isfile(os.path.join(run_dir, "RTAComplete.xml")))
+    else:
+        return not os.path.isfile(os.path.join(run_dir, "CopyComplete.txt"))
+
 def main():
 
     args = parse_args()
@@ -395,9 +401,7 @@ def main():
 
     initial_start_time = time.time()
     # While loop waiting for RTAComplete.txt or RTAComplete.xml
-    while not os.path.isfile(os.path.join(args.run_dir, "RTAComplete.txt")) and \
-        not os.path.isfile(os.path.join(args.run_dir, "RTAComplete.xml")) and \
-        (not args.novaseq or not os.path.isfile(os.path.join(args.run_dir, "CopyComplete.txt"))):
+    while is_still_uploading(args.novaseq, args.run_dir):
         start_time=time.time()
         run_time = start_time - initial_start_time
         # Fail if run time exceeds total time to wait
