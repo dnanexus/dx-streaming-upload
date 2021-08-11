@@ -29,10 +29,10 @@ def create_files(rtacomplete_txt, rtacomplete_xml, copycomplete_txt):
                                                                ((False, True, False), False, True), ((False, True, True), False, False),
                                                                ((True, False, False), False, True), ((True, False, True), False, False),
                                                                ((True, True, False), False, True), ((True, True, True), False, False)])
-def test_is_still_uploading(permutation, result, result_novaseq):
+def test_termination_file_exists(permutation, result, result_novaseq):
     run_dir = create_files(*permutation)
-    actual = iu.is_still_uploading(False, run_dir)
-    actual_novaseq = iu.is_still_uploading(True, run_dir)
+    actual = iu.termination_file_exists(False, run_dir)
+    actual_novaseq = iu.termination_file_exists(True, run_dir)
     shutil.rmtree(run_dir)  # deleting before potential assert failure
     assert actual == result
     assert actual_novaseq == result_novaseq

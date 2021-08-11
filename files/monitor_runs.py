@@ -11,6 +11,10 @@ import sys
 import time
 import yaml
 
+src_dir = os.path.join(os.path.dirname(__file__), ".")
+sys.path.append(src_dir)
+from incremental_upload import termination_file_exists
+
 # Whether to print verbose Debuggin messages
 DEBUG = False
 
@@ -204,9 +208,7 @@ def check_local_runs(base_dir, run_folders, run_length, n_intervals, novaseq=Fal
                 not_run_folders.append(run_folder)
         else:
             # Is a RUN folder
-            if os.path.isfile(os.path.join(folder_path, 'RTAComplete.txt')) or \
-                os.path.isfile(os.path.join(folder_path, 'RTAComplete.xml')) or \
-                (novaseq and os.path.isfile(os.path.join(folder_path, 'CopyComplete.txt'))):
+            if termination_file_exists(folder_path, novaseq):
                 # Is a completed RUN folder
                 completed_runs.append(run_folder)
             else:
