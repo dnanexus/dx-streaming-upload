@@ -25,10 +25,10 @@ def create_files(rtacomplete_txt, rtacomplete_xml, copycomplete_txt):
 
 
 # parametrized with ((RTAComplete.txt, RTAComplete.xml, CopyComplete.txt), result, result_novaseq)
-@pytest.mark.parametrize("permutation,result,result_novaseq", [((False, False, False), True, True), ((False, False, True), True, False),
-                                                               ((False, True, False), False, True), ((False, True, True), False, False),
-                                                               ((True, False, False), False, True), ((True, False, True), False, False),
-                                                               ((True, True, False), False, True), ((True, True, True), False, False)])
+@pytest.mark.parametrize("permutation,result,result_novaseq", [((False, False, False), False, False), ((False, False, True), False, True),
+                                                               ((False, True, False), True, False), ((False, True, True), True, True),
+                                                               ((True, False, False), True, False), ((True, False, True), True, True),
+                                                               ((True, True, False), True, False), ((True, True, True), True, True)])
 def test_termination_file_exists(permutation, result, result_novaseq):
     run_dir = create_files(*permutation)
     actual = iu.termination_file_exists(False, run_dir)
