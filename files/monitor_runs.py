@@ -449,7 +449,6 @@ def main():
     streaming_config = check_config_fields(streaming_config)
     if DEBUG: print("==DEBUG== Validated config: ", streaming_config)
 
-
     (not_runs, completed_runs, ongoing_runs, stale_runs) = check_local_runs(args.directory, run_folders,
                                                                   streaming_config['run_length'],
                                                                   streaming_config['n_seq_intervals'], streaming_config.get("novaseq", False))
