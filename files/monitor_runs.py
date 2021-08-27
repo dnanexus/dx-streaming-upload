@@ -445,8 +445,8 @@ def main():
 
     if DEBUG: print("==DEBUG== translated integers: ", streaming_config)
 
-
     streaming_config = check_config_fields(streaming_config)
+
     if DEBUG: print("==DEBUG== Validated config: ", streaming_config)
 
     (not_runs, completed_runs, ongoing_runs, stale_runs) = check_local_runs(args.directory, run_folders,
