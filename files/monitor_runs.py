@@ -147,6 +147,23 @@ def get_streaming_config(config_file, project, applet, workflow, script, token):
         config[key] = user_config_dict.get(key, default)
     return config
 
+def _transform_to_number(string):
+    if type(string) != str:
+        return string
+    try:
+        res = int(string)
+    except:
+        try:
+            res = float(string)
+        except:
+            res = string
+    return res
+
+def _translate_integers(config):
+    for key in config:
+        config[key] = _transform_to_number(config[key])
+    return config
+
 def check_config_fields(config):
     """ Validate the given directory fields in config are valid directories"""
     def invalid_config(msg):
@@ -424,8 +441,14 @@ def main():
 
     if DEBUG: print("==DEBUG== Got config: ", streaming_config)
 
+    streaming_config = _translate_integers(streaming_config)
+
+    if DEBUG: print("==DEBUG== translated integers: ", streaming_config)
+
+
     streaming_config = check_config_fields(streaming_config)
     if DEBUG: print("==DEBUG== Validated config: ", streaming_config)
+
 
     (not_runs, completed_runs, ongoing_runs, stale_runs) = check_local_runs(args.directory, run_folders,
                                                                   streaming_config['run_length'],
