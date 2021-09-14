@@ -1,7 +1,7 @@
 ---
-dist: trusty
+dist: focal
 language: python
-python: "2.7"
+python: "3"
 sudo: yes
 
 # Install ansible
