@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """
 Script to 'sync' a local directory into the platform. This does not
@@ -20,7 +20,7 @@ import dxpy
 import dxpy.utils.resolver
 
 # For more information about script and inputs run the script with --help option
-# $ python dx_sync_directory.py --help
+# $ python3 dx_sync_directory.py --help
 #
 # Log file structure:
 #
@@ -295,21 +295,20 @@ def check_inputs(args):
 def read_log(args):
     """Reads the log file."""
 
-    print >> sys.stderr, '\n--- Reading log file...'
+    print('\n--- Reading log file...', file=sys.stderr)
 
     if os.path.exists(args.log_file):
         with open(args.log_file, 'r') as logf:
             return json.load(logf)
     else:
-        print >> sys.stderr, '  Log file not found, returning empty log.'
+        print('Log file not found, returning empty log.', file=sys.stderr)
         return {'tar_files': {}, 'next_tar_index': 0, 'files': {},
                 'tar_destination': args.tar_destination, 'file_prefix': args.prefix,
                 'sync_dir': args.sync_dir, 'include_patterns': args.include_patterns,
                 'exclude_patterns': args.exclude_patterns}
-    return log
 
 def check_log(log, args):
-    print >> sys.stderr, ( '\n--- Checking that log matches inputs' )
+    print('\n--- Checking that log matches inputs', file=sys.stderr)
     try:
         log_sync_dir = log['sync_dir']
         if log_sync_dir != args.sync_dir:
@@ -332,11 +331,10 @@ def check_log(log, args):
                      (args.exclude_patterns, log_exclude))
 
         # Check that log has correct keys
-        log_tar_files = log['tar_files']
-        log_next_tar_index = log['next_tar_index']
-        log_files = log['files']
-        log_file_prefix = log['file_prefix']
-    except KeyError, e:
+        if all (k in log for k in ("tar_files","next_tar_index", "files", "file_prefix")):
+            print('\n--- All required keys present in log', file=sys.stderr)
+    
+    except KeyError as e:
         sys.exit('ERROR: Invalid log file. Log does not have "%s" key' % (e))
 
     return
@@ -346,7 +344,7 @@ def get_files_to_upload(log, args):
     files should be synced. Exclude files which match patterns to exclude.
     If include_patterns is specified, include only files which match."""
 
-    print >> sys.stderr, "\n--- Getting files to upload in %s ..." % args.sync_dir
+    print("\n--- Getting files to upload in %s ..." % args.sync_dir, file=sys.stderr)
 
     cur_time = int(time.time())
     to_upload = []
@@ -377,7 +375,7 @@ def full_path_matches_pattern(full_path, patterns_list):
 def split_into_tar_files(files_to_upload, log, args):
     """Split list so tar files uploaded are not greater than max_tar_size"""
 
-    print >> sys.stderr, "\n--- Splitting into tar files to upload..."
+    print("\n--- Splitting into tar files to upload...", file=sys.stderr)
 
     tars_to_upload = []
     current_tar = {"size": 0, "files": []}
@@ -393,9 +391,9 @@ def split_into_tar_files(files_to_upload, log, args):
     tars_to_upload.append(current_tar)
 
     if total_size < args.min_tar_size:
-        print >> sys.stderr, ('QUITTING: Size of files to upload is not big ' +
+        print('QUITTING: Size of files to upload is not big ' +
                 'enough to to be uploaded yet. Please run again later or ' +
-                'specify --min-tar-size to be smaller')
+                'specify --min-tar-size to be smaller', file=sys.stderr)
         return []
 
     return tars_to_upload
@@ -404,13 +402,13 @@ def create_tar_file(files_to_upload, log, args):
     """Create a tar file containing the given files to be uploaded."""
 
     if len(files_to_upload["files"]) == 0:
-        print >> sys.stderr, "\n--- No files to upload, skipping tar file creation..."
+        print("\n--- No files to upload, skipping tar file creation...", file=sys.stderr)
         return log
 
     tar_filename = "%s_%03d.tar.gz" % (log['file_prefix'], log['next_tar_index'])
     tar_full_path = os.path.join(args.tar_directory, tar_filename)
 
-    print >> sys.stderr, "\n--- Creating tar file %s..." % tar_full_path
+    print("\n--- Creating tar file %s..." % tar_full_path, file=sys.stderr)
 
     tar_start = time.time()
     tar_file = tarfile.open(tar_full_path, 'w:gz')
@@ -438,15 +436,15 @@ def create_tar_file(files_to_upload, log, args):
 def upload_tar_files(log, args):
     """Uploads any tar files that haven't yet been uploaded"""
 
-    print >> sys.stderr, "\n--- Uploading tar files..."
+    print("\n--- Uploading tar files...", file=sys.stderr)
 
     tar_destination_project, tar_destination_folder, _ = dxpy.utils.resolver.resolve_path(args.tar_destination, expected='folder')
 
     upload_count = 0
     for tar_file in log['tar_files']:
         if log['tar_files'][tar_file]['status'] == 'tarred':
-            print >> sys.stderr, "Uploading %s to %s:%s..." % (tar_file, tar_destination_project,
-                                                                 tar_destination_folder)
+            print("Uploading %s to %s:%s..." % (tar_file, tar_destination_project,
+                                                                 tar_destination_folder), file=sys.stderr)
             upload_count += 1
             upload_start = time.time()
             if args.dxpy_upload:
@@ -460,10 +458,10 @@ def upload_tar_files(log, args):
                     opts += '--verbose '
 
                 ua_command = "ua --project %s --folder %s --do-not-compress --wait-on-close --progress %s %s --auth-token %s --chunk-size 25M" % (tar_destination_project, tar_destination_folder, opts, tar_file, args.auth_token)
-                print >> sys.stderr, ua_command
+                print(ua_command, file=sys.stderr)
                 try:
-                    dx_file_id = subprocess.check_output(ua_command, shell=True)
-                    dx_file_id = dx_file_id.strip()
+                    ua_process = subprocess.run(ua_command, shell=True, check=True, stdout=subprocess.PIPE, universal_newlines=True)
+                    dx_file_id = ua_process.stdout.strip()
                 except subprocess.CalledProcessError:
                     sys.exit("ERROR: Tar file %s was not uploaded. Please check log for progress and rerun script" % tar_file)
             upload_end = time.time()
@@ -474,18 +472,18 @@ def upload_tar_files(log, args):
             log['tar_files'][tar_file]['timestamps']['upload_end'] = upload_end
             log = update_log(log, args)
     if upload_count == 0:
-        print >> sys.stderr, "\tNo files uploaded..."
+        print("\tNo files uploaded...", file=sys.stderr)
     return log
 
 def remove_tar_files(log, args):
     """Removes tar files that have been uploaded from the local disk."""
 
-    print >> sys.stderr, "\n--- Removing uploaded tar files..."
+    print("\n--- Removing uploaded tar files...", file=sys.stderr)
 
     remove_count = 0
     for tar_file in log['tar_files']:
         if log['tar_files'][tar_file]['status'] == 'uploaded':
-            print >> sys.stderr, "Removing %s..." % tar_file
+            print("Removing %s..." % tar_file, file=sys.stderr)
 
             remove_count += 1
             remove_start = time.time()
@@ -498,7 +496,7 @@ def remove_tar_files(log, args):
             log = update_log(log, args)
 
     if remove_count == 0:
-        print >> sys.stderr, "\tNo files removed..."
+        print("\tNo files removed...", file=sys.stderr)
 
     return log
 
@@ -512,17 +510,17 @@ def print_all_file_ids(log):
         if log['tar_files'][tar_file]['status'] == 'removed':
             file_ids.append(log['tar_files'][tar_file]['file_id'])
         elif log['tar_files'][tar_file]['status'] == 'uploaded':
-            print >> sys.stderr, 'WARNING: %s was uploaded but not removed' % tar_file
+            print('WARNING: %s was uploaded but not removed' % tar_file, file=sys.stderr)
             file_ids.append(log['tar_files'][tar_file]['file_id'])
         else:
-            print >> sys.stderr, 'ERROR: %s was not uploaded' % tar_file
+            print('ERROR: %s was not uploaded' % tar_file, file=sys.stderr)
             failed_uploads += 1
 
     assert failed_uploads >= 0
 
     if failed_uploads == 0:
         for file_id in file_ids:
-            print file_id.strip()
+            print(file_id.strip())
     elif failed_uploads == 1:
         sys.exit('One file was not successfully uploaded.')
     else:
@@ -531,7 +529,7 @@ def print_all_file_ids(log):
 def write_log(log, log_file):
     """Writes the log to the log file."""
 
-    print >> sys.stderr, '\n--- Writing log file...'
+    print('\n--- Writing log file...', file=sys.stderr)
 
     with open(log_file, 'w') as logf:
         json.dump(log, logf)
@@ -547,7 +545,7 @@ def main():
 
     args = parse_args()
 
-    print >> sys.stderr, '\nUser Input:\n%s\n' % args
+    print('\nUser Input:\n%s\n' % args, file=sys.stderr)
 
     args = check_inputs(args)
 
