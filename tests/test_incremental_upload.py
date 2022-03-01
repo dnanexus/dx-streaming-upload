@@ -31,8 +31,8 @@ def create_files(rtacomplete_txt, rtacomplete_xml, copycomplete_txt):
                                                                ((True, True, False), True, False), ((True, True, True), True, True)])
 def test_termination_file_exists(permutation, result, result_novaseq):
     run_dir = create_files(*permutation)
-    actual = iu.termination_file_exists(False, run_dir)
-    actual_novaseq = iu.termination_file_exists(True, run_dir)
+    actual = iu.termination_file_exists(run_dir, False)
+    actual_novaseq = iu.termination_file_exists(run_dir, True)
     shutil.rmtree(run_dir)  # deleting before potential assert failure
     assert actual == result
     assert actual_novaseq == result_novaseq
