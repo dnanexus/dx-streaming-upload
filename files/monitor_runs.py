@@ -225,7 +225,7 @@ def check_local_runs(base_dir, run_folders, run_length, n_intervals, novaseq=Fal
                 not_run_folders.append(run_folder)
         else:
             # Is a RUN folder
-            if termination_file_exists(folder_path, novaseq):
+            if termination_file_exists(novaseq, folder_path):
                 # Is a completed RUN folder
                 completed_runs.append(run_folder)
             else:
