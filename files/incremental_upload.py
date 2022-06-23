@@ -251,7 +251,7 @@ def upload_single_file(filepath, project, folder, properties):
 
         return f.id
 
-    except dxpy. DXError as e:
+    except dxpy.DXError as e:
         print_stderr("Failed to upload local file %s to %s:%s" %(filepath, project, folder))
         return None
 
