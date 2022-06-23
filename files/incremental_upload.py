@@ -1,6 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-from __future__ import print_function
+
 import sys
 import os
 import subprocess as sub
@@ -186,7 +186,7 @@ def check_input(args):
     try:
         # We assume that dx_sync_directory is located in the same folder as this script
         # This is resolved by absolute path of invocation
-        sub.check_call(['python', '{curr_dir}/dx_sync_directory.py'.format(curr_dir=sys.path[0]), '-h'],
+        sub.check_call(['python3', '{curr_dir}/dx_sync_directory.py'.format(curr_dir=sys.path[0]), '-h'],
                 stdout=open(os.devnull, 'w'), close_fds=True)
     except sub.CalledProcessError:
         raise_error("dx_sync_directory.py not found. Please run incremental " +
@@ -218,7 +218,8 @@ def run_command_with_retry(my_num_retries, my_command):
         print_stderr("Running (Try %d of %d): %s" %
                 (trys, my_num_retries, my_command))
         try:
-            output = (sub.check_output(my_command)).strip()
+            process = sub.run(my_command, check=True, stdout=sub.PIPE, universal_newlines=True)
+            output = process.stdout.strip()
             return output
         except sub.CalledProcessError as e:
             print_stderr("Failed to run `%s`, retrying (Try %s)" %
@@ -250,7 +251,7 @@ def upload_single_file(filepath, project, folder, properties):
 
         return f.id
 
-    except dxpy. DXError as e:
+    except dxpy.DXError as e:
         print_stderr("Failed to upload local file %s to %s:%s" %(filepath, project, folder))
         return None
 
@@ -277,7 +278,7 @@ def run_sync_dir(lane, args, finish=False):
     if args.samplesheet_delay:
         exclude_patterns.append("SampleSheet.csv")
 
-    invocation = ["python", "{curr_dir}/dx_sync_directory.py".format(curr_dir=sys.path[0])]
+    invocation = ["python3", "{curr_dir}/dx_sync_directory.py".format(curr_dir=sys.path[0])]
     invocation.extend(["--log-file", lane["log_path"]])
     invocation.extend(["--tar-destination", args.project + ":" + lane["remote_folder"]])
     invocation.extend(["--tar-directory", args.temp_dir])
@@ -302,6 +303,12 @@ def run_sync_dir(lane, args, finish=False):
 
     output = run_command_with_retry(args.retries, invocation)
     return output.split()
+
+def termination_file_exists(novaseq, run_dir):
+    if not novaseq:
+        return os.path.isfile(os.path.join(run_dir, "RTAComplete.txt")) or os.path.isfile(os.path.join(run_dir, "RTAComplete.xml"))
+    else:
+        return os.path.isfile(os.path.join(run_dir, "CopyComplete.txt"))
 
 def main():
 
@@ -383,7 +390,7 @@ def main():
             if not sampleSheet:
                 lane["samplesheet_file_id"] = upload_single_file(args.run_dir + "/SampleSheet.csv", args.project, lane["remote_folder"], properties)
             else:
-                lane["runinfo_file_id"] = sampleSheet["id"]
+                lane["samplesheet_file_id"] = sampleSheet["id"]
 
     if done_count == len(lane_info):
         print_stderr("EXITING: All lanes already uploaded")
@@ -394,9 +401,7 @@ def main():
 
     initial_start_time = time.time()
     # While loop waiting for RTAComplete.txt or RTAComplete.xml
-    while not os.path.isfile(os.path.join(args.run_dir, "RTAComplete.txt")) and \
-        not os.path.isfile(os.path.join(args.run_dir, "RTAComplete.xml")) and \
-        (not args.novaseq or not os.path.isfile(os.path.join(args.run_dir, "CopyComplete.txt"))):
+    while not termination_file_exists(args.novaseq, args.run_dir):
         start_time=time.time()
         run_time = start_time - initial_start_time
         # Fail if run time exceeds total time to wait
@@ -467,9 +472,8 @@ def main():
         if not isinstance(input_dict, dict):
             raise_error("Expected a dict for downstream input. Got %s." %input_dict)
 
-        for k, v in input_dict.items():
-            if not ((isinstance(k, str) or isinstance(k, basestring)) and
-                    (isinstance(v, str) or isinstance(v, basestring) or isinstance(v, dict))):
+        for k, v in list(input_dict.items()):
+            if not (isinstance(k, str) and (isinstance(v, str) or isinstance(v, dict))):
                     raise_error("Expected (string) key and (string or dict) value pairs for downstream input. Got (%s)%s (%s)%s" %(type(k), k, type(v), v))
 
             downstream_input[k] = v
@@ -554,7 +558,7 @@ def main():
         # script has been validated to be executable earlier, assume no change
         try:
             sub.check_call([args.script, args.run_dir])
-        except sub.CalledProcessError, e:
+        except sub.CalledProcessError as e:
             raise_error("Executable (%s) failed with error %d: %s" %(args.script, e.returncode, e.output))
 
 

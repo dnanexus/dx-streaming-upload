@@ -1,14 +1,12 @@
 ---
 # Install Dx-toolkit
-- name: Get DX tarball
-  unarchive: 
-    src: https://dnanexus-sdk.s3.amazonaws.com/dx-toolkit-v0.285.1-ubuntu-14.04-amd64.tar.gz 
-    remote_src: yes 
-    dest: /opt/
+- name: Get DX toolkit
+  pip:
+    requirements: /opt/dx-streaming-upload/requirements.txt
 
 # http://stackoverflow.com/questions/22256884/not-possible-to-source-bashrc-with-ansible
 - name: check dx version
-  shell: source /opt/dx-toolkit/environment  && dx --version
+  shell: dx --version
   args:
     executable: /bin/bash
   register: dx_version
@@ -22,8 +20,8 @@
   file: path=/opt/dnanexus-upload-agent state=directory mode=0755
 
 - name: Download and unzip UA tarball
-  unarchive: 
-    src: https://dnanexus-sdk.s3.amazonaws.com/dnanexus-upload-agent-1.5.31-linux.tar.gz
+  unarchive:
+    src: "https://dnanexus-sdk.s3.amazonaws.com/dnanexus-upload-agent-{{ ua_version }}-linux.tar.gz"
     dest: /opt/dnanexus-upload-agent
     copy: no
 
@@ -50,7 +48,7 @@
 
 # Logging into DNAnexus account
 - name: Log in to DNAnexus account if dx_user_token is provided
-  shell: source /opt/dx-toolkit/environment && dx login --token {{ item.dx_user_token if 'dx_user_token' in item else dx_token }} --noprojects
+  shell: dx login --token {{ item.dx_user_token if 'dx_user_token' in item else dx_token }} --noprojects
   become: yes
   become_user: "{{ item.username }}"
   args:
@@ -82,6 +80,13 @@
   become_user: "{{ item.username }}"
 
 # Edit config file to customize to user-provided parameters
+- name: Change config file's novaseq flag
+  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^novaseq:.*' line='novaseq: \"{{ item.novaseq }}\"'"
+  with_items: "{{ monitored_users }}"
+  become: yes
+  become_user: "{{ item.username }}"
+  when: item.novaseq is defined
+
 - name: Change config file's local TAR directory
   lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^tmp_dir:.*' line='tmp_dir: \"{{ item.local_tar_directory }}\"'"
   with_items: "{{ monitored_users }}"
@@ -134,7 +139,7 @@
 - name: Change specification for downstream input
   lineinfile: # escaping properly is important for this as downstream_input is/can be a JSON obj
     dest: ~/dnanexus/config/monitor_runs.config
-    regexp: '^downstream_input:.*' 
+    regexp: '^downstream_input:.*'
     line: "downstream_input: '{{ item.downstream_input }}'"
   with_items: "{{ monitored_users }}"
   become: yes
@@ -147,6 +152,13 @@
   become: yes
   become_user: "{{ item.username }}"
   when: item.min_size is defined
+
+- name: Change specification for maximum upload size
+  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^max_size:.*' line='max_size: \"{{ item.max_size }}\"'"
+  with_items: "{{ monitored_users }}"
+  become: yes
+  become_user: "{{ item.username }}"
+  when: item.max_size is defined
 
 - name: Change specification for minimum sync interval
   lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^min_interval:.*' line='min_interval: \"{{ item.min_interval }}\"'"
@@ -191,9 +203,9 @@
 # Set up CRON job for monitoring
 - name: set up CRON job to run every minute in debug mode with downstream applet
   cron: >
-    name="DNAnexus monitor runs (debug)"
+    name="DNAnexus monitor runs (debug) {{ item.1 }}"
     user="{{ item.0.username }}"
-    job="flock -w 5 /var/lock/dnanexus_uploader.lock bash -ex -c 'source /opt/dx-toolkit/environment; PATH=/opt/dnanexus-upload-agent:$PATH; python /opt/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ item.1 }} {{ \'-A\' if \'applet\' in item.0 else \'\' }} {{ item.0.applet if \'applet\' in item.0 else \'\'}} {{ \'-w\' if \'workflow\' in item.0 else \'\' }} {{ item.0.workflow if \'workflow\' in item.0 else \'\'}} {{ \'-s\' if \'script\' in item.0 else \'\' }} {{ item.0.script if \'script\' in item.0 else \'\'}} -v > ~/monitor.log 2>&1' > ~/dx-stream_cron.log 2>&1"
+    job="flock -w 5 /var/lock/dnanexus_uploader_{{ item.1 | to_uuid }}.lock bash -ex -c 'PATH=/opt/dnanexus-upload-agent:$PATH; python3 /opt/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ item.1 }} {{ \'-A\' if \'applet\' in item.0 else \'\' }} {{ item.0.applet if \'applet\' in item.0 else \'\'}} {{ \'-w\' if \'workflow\' in item.0 else \'\' }} {{ item.0.workflow if \'workflow\' in item.0 else \'\'}} {{ \'-s\' if \'script\' in item.0 else \'\' }} {{ item.0.script if \'script\' in item.0 else \'\'}} -v > ~/monitor_{{ item.1 | to_uuid }}.log 2>&1' > ~/dx-stream_cron_{{ item.1 | to_uuid }}.log 2>&1"
   with_subelements:
         - "{{ monitored_users }}"
         - monitored_directories
@@ -204,10 +216,10 @@
 
 - name: set up CRON job to run every hour in deploy mode with downstream applet
   cron: >
-    name="DNAnexus monitor runs (deploy)"
+    name="DNAnexus monitor runs (deploy) {{ item.1 }}"
     special_time=hourly
     user="{{ item.0.username }}"
-    job="flock -w 5 /var/lock/dnanexus_uploader.lock bash -ex -c 'source /opt/dx-toolkit/environment; PATH=/opt/dnanexus-upload-agent:$PATH; python /opt/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ item.1 }} {{ \'-A\' if \'applet\' in item.0 else \'\' }} {{ item.0.applet if \'applet\' in item.0 else \'\'}} {{ \'-w\' if \'workflow\' in item.0 else \'\' }} {{ item.0.workflow if \'workflow\' in item.0 else \'\'}} {{ \'-s\' if \'script\' in item.0 else \'\' }} {{ item.0.script if \'script\' in item.0 else \'\'}} -v > ~/monitor.log 2>&1' > ~/dx-stream_cron.log 2>&1"
+    job="flock -w 5 /var/lock/dnanexus_uploader_{{ item.1 | to_uuid }}.lock bash -ex -c 'PATH=/opt/dnanexus-upload-agent:$PATH; python3 /opt/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ item.1 }} {{ \'-A\' if \'applet\' in item.0 else \'\' }} {{ item.0.applet if \'applet\' in item.0 else \'\'}} {{ \'-w\' if \'workflow\' in item.0 else \'\' }} {{ item.0.workflow if \'workflow\' in item.0 else \'\'}} {{ \'-s\' if \'script\' in item.0 else \'\' }} {{ item.0.script if \'script\' in item.0 else \'\'}} -v > ~/monitor_{{ item.1 | to_uuid }}.log 2>&1' > ~/dx-stream_cron_{{ item.1 | to_uuid }}.log 2>&1"
   with_subelements:
         - "{{ monitored_users }}"
         - monitored_directories
