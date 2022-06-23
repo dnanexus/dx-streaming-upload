@@ -5,7 +5,7 @@ dx-streaming-upload
 
 The dx-streaming-upload Ansible role packages the streaming upload module for increamentally uploading a RUN directory from an Illumina sequencer onto the DNAnexus platform.
 
-Instruments that this module support include the Illumina MiSeq, NextSeq, HiSeq-2500, HiSeq-4000 and HiSeq-X.
+Instruments that this module support include the Illumina MiSeq, NextSeq, HiSeq-2500, HiSeq-4000, HiSeq-X, Novaseq.
 
 Role Variables
 --------------
