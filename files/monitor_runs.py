@@ -77,7 +77,7 @@ def parse_args():
                         help='DNAnexus project ID to upload to',
                         required=True)
 
-    requiredNamed.add_argument('--directory', '-d', 
+    requiredNamed.add_argument('--directory', '-d',
                         help='Local directory to monitor for new RUN folder(s)',
                         required=True)
 
@@ -208,8 +208,9 @@ def check_local_runs(base_dir, run_folders, run_length, n_intervals, novaseq=Fal
     """ Check local folders to ascertain which are Illumina RUN directories (defined
     as containing a RunInfo.xml file in root of the folder).
     Classify such RUN folders into 3 classes:
-     - Completed runs (has a RunInfo.xml and a RTAComplete.txt/xml file)
-     - In-progress run (has a RunInfo.xml file, but not a RTAComplete.txt/xml file)
+     - Completed runs (has a RunInfo.xml and a RTAComplete.txt/xml file, or a CopyComplete.txt in case of
+       a NovaSeq run)
+     - In-progress run (has a RunInfo.xml file, but not a RTAComplete.{txt,xml}/CopyComplete.txt file)
      - Stale run (has a RunInfo.xml file, which was created more than Y times expected duration
        of a sequencing run, both the sequencing runtime and Y will be user-specified,
        with defaults of 2 and 24hrs respectively).
@@ -408,9 +409,14 @@ def trigger_streaming_upload(folders, config):
     """ Open a thread pool of size N_STREAMING_THREADS
     and trigger streaming upload for all unsynced and incomplete folders"""
     pool = multiprocessing.Pool(processes=int(config["n_streaming_threads"]))
+    results = []
     for folder in folders:
         print("Adding folder {0} to pool".format(folder))
-        pool.apply_async(_trigger_streaming_upload, args=(folder, config)).get()
+        results.append(pool.apply_async(_trigger_streaming_upload, args=(folder, config)))
+
+    # Retrieve results from all _trigger_streaming_upload calls
+    for result in results:
+        result.get()
 
     # Close pool, no more tasks can be added
     pool.close()
