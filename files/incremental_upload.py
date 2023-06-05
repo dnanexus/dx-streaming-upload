@@ -11,7 +11,7 @@ import dxpy
 import argparse
 import json
 
-# Uploads an Illumina run directory (HiSeq 2500, HiSeq X, NextSeq)
+# Uploads an Illumina run directory (HiSeq 2500, HiSeq X, NextSeq, NovaSeq)
 # If for use with a MiSeq, users MUST change the config files to include and NOT specify the -l argument
 #
 # WHAT THIS SCRIPT DOES
