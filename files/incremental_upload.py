@@ -11,7 +11,7 @@ import dxpy
 import argparse
 import json
 
-# Uploads an Illumina run directory (HiSeq 2500, HiSeq X, NextSeq)
+# Uploads an Illumina run directory (HiSeq 2500, HiSeq X, NextSeq, NovaSeq)
 # If for use with a MiSeq, users MUST change the config files to include and NOT specify the -l argument
 #
 # WHAT THIS SCRIPT DOES
@@ -402,7 +402,7 @@ def main():
     print_stderr("Maximum allowable time for run to complete: %d seconds." %seconds_to_wait)
 
     initial_start_time = time.time()
-    # While loop waiting for RTAComplete.txt, RTAComplete.xml, or CopyComplete.txt
+    # While loop waiting for RTAComplete.txt or RTAComplete.xml, or CopyComplete.txt, in case of a NovaSeq run
     while not termination_file_exists(args.novaseq, args.run_dir):
         start_time=time.time()
         run_time = start_time - initial_start_time
