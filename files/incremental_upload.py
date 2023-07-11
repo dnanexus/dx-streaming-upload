@@ -400,7 +400,7 @@ def main():
     print_stderr("Maximum allowable time for run to complete: %d seconds." %seconds_to_wait)
 
     initial_start_time = time.time()
-    # While loop waiting for RTAComplete.txt or RTAComplete.xml
+    # While loop waiting for RTAComplete.txt, RTAComplete.xml, or CopyComplete.txt
     while not termination_file_exists(args.novaseq, args.run_dir):
         start_time=time.time()
         run_time = start_time - initial_start_time
@@ -446,6 +446,23 @@ def main():
         # Upload sample sheet here, if samplesheet-delay specified
         if args.samplesheet_delay:
             lane["samplesheet_file_id"] = upload_single_file(args.run_dir + "/SampleSheet.csv", args.project,
+                                            lane["remote_folder"], properties)
+
+        if args.upload_complete_files:
+            # At this point we have confirmed that one of the three *Complete.txt
+            # files is in the run directory
+
+            file_name = "CopyComplete.txt"
+            if os.path.isfile(os.path.join(args.run_dir, file_name)):
+                lane["copy_complete_file_id"] = upload_single_file(args.run_dir + "/" + file_name, args.project,
+                                            lane["remote_folder"], properties)
+            file_name = "RTAComplete.txt"
+            if os.path.isfile(os.path.join(args.run_dir, file_name)):
+                lane["rta_complete_file_id"] = upload_single_file(args.run_dir + "/" + file_name, args.project,
+                                            lane["remote_folder"], properties)
+            file_name = "SequenceComplete.txt"
+            if os.path.isfile(os.path.join(args.run_dir, file_name)):
+                lane["sequence_complete_file_id"] = upload_single_file(args.run_dir + "/" + file_name, args.project,
                                             lane["remote_folder"], properties)
 
         # ID to singly uploaded file (when uploaded successfully)
