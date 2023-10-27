@@ -91,7 +91,7 @@ def parse_args():
             "will be overwritten programmatically, even if provided by user.")
     parser.add_argument("-S", "--samplesheet-delay", action="store_true",
             help="Delay samplesheet upload until run data is uploaded.")
-    parser.add_argument("-C", "--upload-complete-files", action="store_true",
+    parser.add_argument("-C", "--upload-complete-files", action="store_true", default=True,
             help="Upload CopyComplete.txt, RTAComplete.txt, SequenceComplete.txt once run data is uploaded.")
     parser.add_argument("-x", "--exclude-patterns", metavar='<regex>', nargs='*',
             help="An optional list of regex patterns to exclude.")
