@@ -91,6 +91,8 @@ def parse_args():
             "will be overwritten programmatically, even if provided by user.")
     parser.add_argument("-S", "--samplesheet-delay", action="store_true",
             help="Delay samplesheet upload until run data is uploaded.")
+    parser.add_argument("-C", "--upload-complete-files", action="store_true", default=True,
+            help="Upload CopyComplete.txt, RTAComplete.txt, SequenceComplete.txt once run data is uploaded.")
     parser.add_argument("-x", "--exclude-patterns", metavar='<regex>', nargs='*',
             help="An optional list of regex patterns to exclude.")
     parser.add_argument("-n", "--novaseq", dest="novaseq", action='store_true',
@@ -446,6 +448,23 @@ def main():
         # Upload sample sheet here, if samplesheet-delay specified
         if args.samplesheet_delay:
             lane["samplesheet_file_id"] = upload_single_file(args.run_dir + "/SampleSheet.csv", args.project,
+                                            lane["remote_folder"], properties)
+
+        if args.upload_complete_files:
+            # At this point we have confirmed that one of the three *Complete.txt
+            # files is in the run directory
+
+            file_name = "CopyComplete.txt"
+            if os.path.isfile(os.path.join(args.run_dir, file_name)):
+                lane["copy_complete_file_id"] = upload_single_file(args.run_dir + "/" + file_name, args.project,
+                                            lane["remote_folder"], properties)
+            file_name = "RTAComplete.txt"
+            if os.path.isfile(os.path.join(args.run_dir, file_name)):
+                lane["rta_complete_file_id"] = upload_single_file(args.run_dir + "/" + file_name, args.project,
+                                            lane["remote_folder"], properties)
+            file_name = "SequenceComplete.txt"
+            if os.path.isfile(os.path.join(args.run_dir, file_name)):
+                lane["sequence_complete_file_id"] = upload_single_file(args.run_dir + "/" + file_name, args.project,
                                             lane["remote_folder"], properties)
 
         # ID to singly uploaded file (when uploaded successfully)
