@@ -130,9 +130,22 @@ def get_dx_auth_token():
 
 
 def get_streaming_config(config_file, project, applet, workflow, script, token):
+    
+    config = {}
+    
     """ Configure settings by reading in the config_file, which
     is assumed to be a YAML file"""
-    config = {"project": project, "token": token}
+    with open(config_file.name, 'r') as yaml_file:
+        user_config_dict = yaml.safe_load(yaml_file)
+    
+    for key, default in list(CONFIG_DEFAULT.items()):
+        config[key] = user_config_dict.get(key, default)
+
+    """ if there are command line args, they will override the config_file """
+    if project:
+        config["project"] = project
+    if token:
+        config["token"] = token
     if applet:
         config["applet"] = applet
     if workflow:
@@ -140,11 +153,6 @@ def get_streaming_config(config_file, project, applet, workflow, script, token):
     if script:
         config["script"] = os.path.abspath(script)
 
-    with open(config_file.name, 'r') as yaml_file:
-        user_config_dict = yaml.safe_load(yaml_file)
-
-    for key, default in list(CONFIG_DEFAULT.items()):
-        config[key] = user_config_dict.get(key, default)
     return config
 
 def _transform_to_number(string):

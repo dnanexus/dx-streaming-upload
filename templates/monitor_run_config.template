@@ -1,3 +1,11 @@
+# Project to upload to
+# You must change this
+project: project-xxxx
+
+# Local directory for log file
+# Corresponds to -L parameter in incremental upload
+run_dir: '~/dnanexus/upload/runs'
+
 # Local directory for log file
 # Corresponds to -L parameter in incremental upload
 log_dir: '~/dnanexus/upload/LOGS'
