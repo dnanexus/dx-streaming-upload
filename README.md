@@ -164,8 +164,8 @@ project
        │    │  SampleSheet.csv
        │    │  run.20160101_M000001_0001_000000000-ABCDE.lane.all.log
        │    │  run.20160101_M000001_0001_000000000-ABCDE.lane.all.upload_sentinel
-       │    │  run.20160101_M000001_0001_000000000-ABCDE.lane.all_000.tar.gz
-       │    │  run.20160101_M000001_0001_000000000-ABCDE.lane.all_001.tar.gz
+       │    │  run.20160101_M000001_0001_000000000-ABCDE.lane.all_000.tar
+       │    │  run.20160101_M000001_0001_000000000-ABCDE.lane.all_001.tar
        │    │  ...
        │
        └───reads (or analyses)

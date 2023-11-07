@@ -3,7 +3,7 @@
 """
 Script to 'sync' a local directory into the platform. This does not
 transfer files into the platform one-by-one, but rather uploads
-gzipped tar files containing bundles of recently modified files.
+tar files containing bundles of recently modified files.
 """
 
 import argparse
@@ -113,7 +113,7 @@ def parse_args():
     arguments."""
 
     parser = argparse.ArgumentParser(description='Script to "synchronize" a local directory into the platform. This does not' +
-                                    '\n' + 'transfer files into the platform one-by-one, but rather uploads gzipped tar' +
+                                    '\n' + 'transfer files into the platform one-by-one, but rather uploads tar' +
                                     '\n' + 'files containing bundles of recently modified files.',
                                     epilog='Each time this script is run, it examines the specified directory and the log' +
                                     '\n' + 'file (if it exists). It identifies each file that has not yet been uploaded,' +
@@ -121,7 +121,7 @@ def parse_args():
                                     '\n' + 'In addition, it finds all files which have been previously uploaded, but whose' +
                                     '\n' + 'modified timestamp has changed since the previous upload.' +
                                     '\n' +
-                                    '\n' + 'All of the files to be uploaded are added to a gzipped TAR file which is' +
+                                    '\n' + 'All of the files to be uploaded are added to a TAR file which is' +
                                     '\n' + 'then uploaded. Newly uploaded files are recorded in the log file, including' +
                                     '\n' + 'the modified timestamp of each file at the time it was added to the tar file.' +
                                     '\n' +
@@ -405,13 +405,13 @@ def create_tar_file(files_to_upload, log, args):
         print("\n--- No files to upload, skipping tar file creation...", file=sys.stderr)
         return log
 
-    tar_filename = "%s_%03d.tar.gz" % (log['file_prefix'], log['next_tar_index'])
+    tar_filename = "%s_%03d.tar" % (log['file_prefix'], log['next_tar_index'])
     tar_full_path = os.path.join(args.tar_directory, tar_filename)
 
     print("\n--- Creating tar file %s..." % tar_full_path, file=sys.stderr)
 
     tar_start = time.time()
-    tar_file = tarfile.open(tar_full_path, 'w:gz')
+    tar_file = tarfile.open(tar_full_path, 'w')
 
     log_updates = {}
 
