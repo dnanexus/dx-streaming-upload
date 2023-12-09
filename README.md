@@ -12,6 +12,8 @@ Role Variables
 - `mode`: `{deploy, debug}` In the *debug* mode, monitoring cron job is triggered every minute; in *deploy mode*, monitoring cron job is triggered every hour.
 - `upload_project`: ID of the DNAnexus project that the RUN folders should be uploaded to. The ID is of the form `project-BpyQyjj0Y7V0Gbg7g52Pqf8q`
 - `dx_token`: API token for the DNAnexus user to be used for data upload. The API token should give minimally UPLOAD access to the `{{ upload project }}`, or CONTRIBUTE access if `downstream_applet` is specified. Instructions for generating a API token can be found on the DNAnexus documentation [Authentication Tokens](https://documentation.dnanexus.com/user/login-and-logout#generating-an-authentication-token) page. This value is overriden by `dx_user_token` in `monitored_users`.
+- `append`: boolean to configure appending or truncating monitor.log and dx-stream_cron.log.  If true, please make sure you have a periodic clean up script, otherwise these files may grow too large.  Default is false
+- `cron_log_folder`: folder name to store monitor.log and dx-stream_cron.log files.
 - `monitored_users`: This is a list of objects, each representing a remote user, with its set of incremental upload parameters. For each `monitored_user`, the following values are accepted
   - `username`: (Required) username of the remote user
   - `monitored_directories`: (Required)  Path to the local directory that should be monitored for RUN folders. Multiple directories can be listed. Suppose that the folder `20160101_M000001_0001_000000000-ABCDE` is the RUN directory, then the folder structure assumed is `{{monitored_dir}}/20160101_M000001_0001_000000000-ABCDE`
@@ -78,6 +80,8 @@ Example Playbook
         downstream_input: '{"0.sequencing_center: "CENTER_A"}'
     mode: debug
     upload_project: project-BpyQyjj0Y7V0Gbg7g52Pqf8q
+    append: true
+    cron_run_log: ~/cron_logs
 
   roles:
     - dx-streaming-upload
