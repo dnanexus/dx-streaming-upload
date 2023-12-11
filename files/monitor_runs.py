@@ -372,6 +372,7 @@ def _trigger_streaming_upload(folder, config):
                "-D", config['run_length'],
                "-I", config['n_seq_intervals'],
                "-u", config['n_upload_threads'],
+               "-z", config['hourly_restart'],
                "--verbose"]
 
     if config['novaseq']:
