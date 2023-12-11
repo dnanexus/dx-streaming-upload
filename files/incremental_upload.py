@@ -97,7 +97,8 @@ def parse_args():
             help="An optional list of regex patterns to exclude.")
     parser.add_argument("-n", "--novaseq", dest="novaseq", action='store_true',
             help="If Novaseq is used, this parameter has to be used.")
-
+    parser.add_argument("-z", "--hourly-restart", dest="hourly_restart", action='store_true',
+            help="Only upload for 1 hour, then exit and restart.")
 
     # Mutually exclusive inputs for verbose loggin (UA) vs dxpy upload
     upload_debug_group = parser.add_mutually_exclusive_group(required=False)
@@ -402,6 +403,8 @@ def main():
     print_stderr("Maximum allowable time for run to complete: %d seconds." %seconds_to_wait)
 
     initial_start_time = time.time()
+    max_loops = 3600 // args.sync_interval
+    loop = 1
     # While loop waiting for RTAComplete.txt or RTAComplete.xml, or CopyComplete.txt, in case of a NovaSeq run
     while not termination_file_exists(args.novaseq, args.run_dir):
         start_time=time.time()
@@ -417,6 +420,10 @@ def main():
             if lane["uploaded"]:
                continue
             run_sync_dir(lane, args)
+
+        if args.hourly_restart and loop == max_loops:
+            sys.exit() 
+        loop = loop + 1
 
         # Wait at least the minimum time interval before running the loop again
         cur_time = time.time()

@@ -16,6 +16,7 @@ Role Variables
 - `dx_token`: API token for the DNAnexus user to be used for data upload. The API token should give minimally UPLOAD access to the `{{ upload project }}`, or CONTRIBUTE access if `downstream_applet` is specified. Instructions for generating a API token can be found on the DNAnexus documentation [Authentication Tokens](https://documentation.dnanexus.com/user/login-and-logout#generating-an-authentication-token) page. This value is overriden by `dx_user_token` in `monitored_users`.
 - `append_log`: boolean to configure appending or truncating monitor.log and dx-stream_cron.log.  If true, please make sure you have a periodic clean up script, otherwise these files may grow too large.  Default is false
 - `cron_log_folder`: folder name to store monitor.log and dx-stream_cron.log files.
+- `hourly_restart` : trigger before the hour exit, so the next cron job will start, thus picking up new run folders.  Default is false
 - `monitored_users`: This is a list of objects, each representing a remote user, with its set of incremental upload parameters. For each `monitored_user`, the following values are accepted
   - `username`: (Required) username of the remote user
   - `monitored_directories`: (Required)  Path to the local directory that should be monitored for RUN folders. Multiple directories can be listed. Suppose that the folder `20160101_M000001_0001_000000000-ABCDE` is the RUN directory, then the folder structure assumed is `{{monitored_dir}}/20160101_M000001_0001_000000000-ABCDE`

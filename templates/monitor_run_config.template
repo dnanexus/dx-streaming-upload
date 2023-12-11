@@ -50,3 +50,6 @@ delay_sample_sheet_upload: False
 
 # Novaseq flag
 novaseq: False
+
+# restart dx-streaming-upload hourly
+hourly_restart: False
