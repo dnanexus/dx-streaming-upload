@@ -87,6 +87,10 @@
   become_user: "{{ item.username }}"
   when: item.novaseq is defined
 
+- name: Change config file's hourly restart flag
+  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^hourly_restart:.*' line='hourly_restart: True'"
+  when: hourly_restart is defined and hourly_restart
+
 - name: Change config file's local TAR directory
   lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^tmp_dir:.*' line='tmp_dir: \"{{ item.local_tar_directory }}\"'"
   with_items: "{{ monitored_users }}"
