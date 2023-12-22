@@ -97,7 +97,7 @@ def parse_args():
             help="An optional list of regex patterns to exclude.")
     parser.add_argument("-n", "--novaseq", dest="novaseq", action='store_true',
             help="If Novaseq is used, this parameter has to be used.")
-    parser.add_argument("-z", "--hourly-restart", dest="hourly_restart", action='store_true',
+    parser.add_argument("-Z", "--hourly-restart", dest="hourly_restart", action='store_true',
             help="Only upload for 1 hour, then exit and restart.")
 
     # Mutually exclusive inputs for verbose loggin (UA) vs dxpy upload

@@ -40,7 +40,8 @@ CONFIG_DEFAULT = {
     "downstream_input": '',
     "n_streaming_threads":1,
     "delay_sample_sheet_upload": False,
-    "novaseq": False
+    "novaseq": False,
+    "hourly_restart": False
 }
 
 # Base folder in which the RUN folders are deposited
@@ -372,11 +373,13 @@ def _trigger_streaming_upload(folder, config):
                "-D", config['run_length'],
                "-I", config['n_seq_intervals'],
                "-u", config['n_upload_threads'],
-               "-z", config['hourly_restart'],
                "--verbose"]
 
     if config['novaseq']:
         command += ['-n']
+
+    if config['hourly_restart']:
+        command +=['-Z']
 
     if config['exclude'] != '':
         command += ["-x", config['exclude']]
