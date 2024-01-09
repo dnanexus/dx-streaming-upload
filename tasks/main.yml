@@ -209,7 +209,7 @@
   cron: >
     name="DNAnexus monitor runs (debug) {{ item.1 }}"
     user="{{ item.0.username }}"
-    job="flock -w 5 /var/lock/dnanexus_uploader_{{ item.1 | basename  }}.lock bash -ex -c 'PATH=/opt/dnanexus-upload-agent:$PATH; python3 /opt/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ item.1 }} {{ \'-A\' if \'applet\' in item.0 else \'\' }} {{ item.0.applet if \'applet\' in item.0 else \'\'}} {{ \'-w\' if \'workflow\' in item.0 else \'\' }} {{ item.0.workflow if \'workflow\' in item.0 else \'\'}} {{ \'-s\' if \'script\' in item.0 else \'\' }} {{ item.0.script if \'script\' in item.0 else \'\'}} -v {{ \'>>\' if append_log | default(false) else \'>\' }} {{ cron_log_folder | default(\'~\') }}/monitor_{{ item.1 | basename }}.log 2>&1' {{ \'>>\' if append_log | default(false) else \'>\'}} {{ cron_log_folder | default(\'~\') }}/dx-stream_cron_{{ item.1 | basename }}.log 2>&1"
+    job="flock -w 5 /var/lock/dnanexus_uploader_{{ item.1 | regex_replace('\\/$', '') | basename  }}.lock bash -ex -c 'PATH=/opt/dnanexus-upload-agent:$PATH; python3 /opt/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ item.1 }} {{ \'-A\' if \'applet\' in item.0 else \'\' }} {{ item.0.applet if \'applet\' in item.0 else \'\'}} {{ \'-w\' if \'workflow\' in item.0 else \'\' }} {{ item.0.workflow if \'workflow\' in item.0 else \'\'}} {{ \'-s\' if \'script\' in item.0 else \'\' }} {{ item.0.script if \'script\' in item.0 else \'\'}} -v {{ \'>>\' if append_log | default(false) else \'>\' }} {{ cron_log_folder | default(\'~\') }}/monitor_{{ item.1 | regex_replace('\\/$', '') | basename }}.log 2>&1' {{ \'>>\' if append_log | default(false) else \'>\'}} {{ cron_log_folder | default(\'~\') }}/dx-stream_cron_{{ item.1 | regex_replace('\\/$', '') | basename }}.log 2>&1"
   with_subelements:
         - "{{ monitored_users }}"
         - monitored_directories
@@ -217,13 +217,12 @@
   become_user: "{{ item.0.username }}"
   when: mode == "debug"
 
-
 - name: set up CRON job to run every hour in deploy mode with downstream applet
   cron: >
     name="DNAnexus monitor runs (deploy) {{ item.1 }}"
     special_time=hourly
     user="{{ item.0.username }}"
-    job="flock -w 5 /var/lock/dnanexus_uploader_{{ item.1 | basename  }}.lock bash -ex -c 'PATH=/opt/dnanexus-upload-agent:$PATH; python3 /opt/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ item.1 }} {{ \'-A\' if \'applet\' in item.0 else \'\' }} {{ item.0.applet if \'applet\' in item.0 else \'\'}} {{ \'-w\' if \'workflow\' in item.0 else \'\' }} {{ item.0.workflow if \'workflow\' in item.0 else \'\'}} {{ \'-s\' if \'script\' in item.0 else \'\' }} {{ item.0.script if \'script\' in item.0 else \'\'}} -v {{ \'>>\' if append_log | default(false) else \'>\' }} {{ cron_log_folder | default(\'~\') }}/monitor_{{ item.1 | basename }}.log 2>&1' {{ \'>>\' if append_log | default(false) else \'>\'}} {{ cron_log_folder | default(\'~\') }}/dx-stream_cron_{{ item.1 | basename }}.log 2>&1"
+    job="flock -w 5 /var/lock/dnanexus_uploader_{{ item.1 | regex_replace('\\/$', '') | basename  }}.lock bash -ex -c 'PATH=/opt/dnanexus-upload-agent:$PATH; python3 /opt/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ item.1 }} {{ \'-A\' if \'applet\' in item.0 else \'\' }} {{ item.0.applet if \'applet\' in item.0 else \'\'}} {{ \'-w\' if \'workflow\' in item.0 else \'\' }} {{ item.0.workflow if \'workflow\' in item.0 else \'\'}} {{ \'-s\' if \'script\' in item.0 else \'\' }} {{ item.0.script if \'script\' in item.0 else \'\'}} -v {{ \'>>\' if append_log | default(false) else \'>\' }} {{ cron_log_folder | default(\'~\') }}/monitor_{{ item.1 | regex_replace('\\/$', '') | basename }}.log 2>&1' {{ \'>>\' if append_log | default(false) else \'>\'}} {{ cron_log_folder | default(\'~\') }}/dx-stream_cron_{{ item.1 | regex_replace('\/$', '') | basename }}.log 2>&1"
   with_subelements:
         - "{{ monitored_users }}"
         - monitored_directories
@@ -242,6 +241,18 @@
   become_user: "{{ item.username }}"
   when: mode == "debug"
 
+- name: delete deploy mode CRON job if debug mode set
+  cron: >
+    name="DNAnexus monitor runs (deploy) {{ item.1 }}"
+    user="{{ item.0.username }}"
+    state=absent
+  with_subelements:
+        - "{{ monitored_users }}"
+        - monitored_directories
+  become: yes
+  become_user: "{{ item.0.username }}"
+  when: mode == "debug"
+
 - name: delete debug mode CRON job if deploy mode set
   cron: >
     name="DNAnexus monitor runs (debug)"
@@ -250,4 +261,16 @@
   with_items: "{{ monitored_users }}"
   become: yes
   become_user: "{{ item.username }}"
+  when: mode == "deploy"
+
+- name: delete debug mode CRON job if deploy mode set
+  cron: >
+    name="DNAnexus monitor runs (debug) {{ item.1 }}"
+    user="{{ item.0.username }}"
+    state=absent
+  with_subelements:
+        - "{{ monitored_users }}"
+        - monitored_directories
+  become: yes
+  become_user: "{{ item.0.username }}"
   when: mode == "deploy"
