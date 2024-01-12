@@ -76,7 +76,8 @@ Example Playbook
         novaseq: True
       - username: root
         monitored_directories:
-          - ~/home/root/runs
+          - ~/seq1
+          - ~/seq2
         workflow: workflow-BvFz31j0Y7V5QPf09x9y91pF
         downstream_input: '{"0.sequencing_center: "CENTER_A"}'
     mode: debug
