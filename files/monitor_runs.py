@@ -430,8 +430,8 @@ def trigger_streaming_upload(folders, config):
 
 def main():
     """ Main entry point """
-    if DEBUG: print("==DEBUG== Starting monitor_runs at ", time.time_ns())
     args = parse_args()
+    if DEBUG: print("==DEBUG== Starting monitor_runs at ", time.time_ns())
     if DEBUG: print("==DEBUG== Got args, ", args)
 
     # Make sure that we can find the incremental_upload scripts
