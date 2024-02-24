@@ -490,7 +490,7 @@ def main():
     folders_to_sync += unsynced_folders
     folders_to_sync = ["{0}/{1}".format(args.directory, folder) for folder in folders_to_sync]
 
-    if DEBUG: "==DEBUG== Folders to sync: {0}".format(folders_to_sync)
+    if DEBUG: print("==DEBUG== Folders to sync: {0}".format(folders_to_sync))
 
     trigger_streaming_upload(folders_to_sync, streaming_config)
 
