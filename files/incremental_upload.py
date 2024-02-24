@@ -403,7 +403,6 @@ def main():
     print_stderr("Maximum allowable time for run to complete: %d seconds." %seconds_to_wait)
 
     initial_start_time = time.time()
-    max_loops = 3600 // args.sync_interval
     loop = 1
     # While loop waiting for RTAComplete.txt or RTAComplete.xml, or CopyComplete.txt, in case of a NovaSeq run
     while not termination_file_exists(args.novaseq, args.run_dir):
@@ -421,9 +420,9 @@ def main():
                continue
             run_sync_dir(lane, args)
 
-        if args.hourly_restart and loop == max_loops:
+        # if the next upload is going to be 1 hour after the initial start, then terminate and let the cron job pick it up
+        if args.hourly_restart and (time.time() + args.sync_interval < initial_start_time + 3600):
             sys.exit() 
-        loop = loop + 1
 
         # Wait at least the minimum time interval before running the loop again
         cur_time = time.time()
