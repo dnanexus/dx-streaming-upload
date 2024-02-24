@@ -85,7 +85,7 @@ Example Playbook
     mode: debug
     upload_project: project-BpyQyjj0Y7V0Gbg7g52Pqf8q
     append: true
-    cron_run_log: ~/cron_logs
+    cron_log_folder: ~/cron_logs
 
   roles:
     - dx-streaming-upload
