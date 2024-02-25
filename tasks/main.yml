@@ -83,15 +83,12 @@
 
 # Edit config file to customize to user-provided parameters
 - name: Change config file's novaseq flag
-  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^novaseq:.*' line='novaseq: {{ item.novaseq }}'"
-  with_items: "{{ monitored_users }}"
-  become: yes
-  become_user: "{{ item.username }}"
-  when: item.novaseq is defined
+  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^novaseq:.*' line='novaseq: {{ novaseq }}'"
+  when: novaseq is defined
 
 - name: Change config file's hourly restart flag
-  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^hourly_restart:.*' line='hourly_restart: True'"
-  when: hourly_restart is defined and hourly_restart
+  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^hourly_restart:.*' line='hourly_restart: {{ hourly_restart }}'"
+  when: hourly_restart is defined
 
 - name: Change config file's local TAR directory
   lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^tmp_dir:.*' line='tmp_dir: \"{{ item.local_tar_directory }}\"'"
@@ -141,6 +138,20 @@
   become: yes
   become_user: "{{ item.username }}"
   when: item.n_upload_threads is defined
+
+- name: Change verbose for UA
+  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^verbose:.*' line='verbose: {{ item.verbose }}'"
+  with_items: "{{ monitored_users }}"
+  become: yes
+  become_user: "{{ item.username }}"
+  when: item.verbose is defined
+
+- name: Change progress for UA
+  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^ua_progress:.*' line='ua_progress: {{ item.ua_progress }}'"
+  with_items: "{{ monitored_users }}"
+  become: yes
+  become_user: "{{ item.username }}"
+  when: item.ua_progress is defined
 
 - name: Change specification for downstream input
   lineinfile: # escaping properly is important for this as downstream_input is/can be a JSON obj

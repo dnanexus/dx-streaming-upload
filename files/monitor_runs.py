@@ -41,7 +41,9 @@ CONFIG_DEFAULT = {
     "n_streaming_threads":1,
     "delay_sample_sheet_upload": False,
     "novaseq": False,
-    "hourly_restart": False
+    "hourly_restart": False,
+    "ua_progress": True,
+    "verbose": True
 }
 
 # Base folder in which the RUN folders are deposited
@@ -372,9 +374,14 @@ def _trigger_streaming_upload(folder, config):
                "-R", config['n_retries'],
                "-D", config['run_length'],
                "-I", config['n_seq_intervals'],
-               "-u", config['n_upload_threads'],
-               "--verbose"]
+               "-u", config['n_upload_threads']]
 
+    if config['verbose']:
+        command += ['--verbose']
+
+    if config['ua_progress']:
+        command =+ ['--progress']
+        
     if config['novaseq']:
         command += ['-n']
 
@@ -431,7 +438,7 @@ def trigger_streaming_upload(folders, config):
 def main():
     """ Main entry point """
     args = parse_args()
-    if DEBUG: print("==DEBUG== Starting monitor_runs at ", time.time_ns())
+    if DEBUG: print("==DEBUG== **** Starting monitor_runs at ", time.time())
     if DEBUG: print("==DEBUG== Got args, ", args)
 
     # Make sure that we can find the incremental_upload scripts
