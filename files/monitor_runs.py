@@ -340,7 +340,7 @@ def local_upload_has_lapsed(folder, config):
     return True
 
 def check_incomplete_sync(synced_folders, config):
-    """ Check whether the RUN folder sync is complete by querying the state
+    """ Check whether the RUN folder sync is incomplete by querying the state
     of the sentinel record (closed = complete, open = incomplete). Returns
     a list of incomplete syncs which have been deemed to be inactive, according
     to the local_upload_has_lapsed function"""
@@ -443,7 +443,7 @@ def trigger_streaming_upload(folders, config):
 def main():
     """ Main entry point """
     args = parse_args()
-    if DEBUG: print("==DEBUG== **** Starting monitor_runs at ", time.time())
+    if DEBUG: print("==DEBUG== Starting monitor_runs at ", time.time())
     if DEBUG: print("==DEBUG== Got args, ", args)
 
     # Make sure that we can find the incremental_upload scripts
