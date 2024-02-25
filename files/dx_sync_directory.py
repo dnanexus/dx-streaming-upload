@@ -219,6 +219,11 @@ def parse_args():
                                     '\n' + '--verbose mode.' +
                                     '\n' +
                                     '\n')
+    upload_debug_group.add_argument('--ua_progress', action='store_true',
+                                    help='This flag allows you to specify upload agent' +
+                                    '\n' + '--progress mode.' +
+                                    '\n' +
+                                    '\n')
 
 
     age_group = parser.add_mutually_exclusive_group(required=False)
@@ -457,7 +462,10 @@ def upload_tar_files(log, args):
                 if args.verbose:
                     opts += '--verbose '
 
-                ua_command = "ua --project %s --folder %s --do-not-compress --wait-on-close --progress %s %s --auth-token %s --chunk-size 25M" % (tar_destination_project, tar_destination_folder, opts, tar_file, args.auth_token)
+                if args.ua_progress:
+                    opts += '--progress '
+
+                ua_command = "ua --project %s --folder %s --do-not-compress --wait-on-close %s %s --auth-token %s --chunk-size 25M" % (tar_destination_project, tar_destination_folder, opts, tar_file, args.auth_token)
                 print(ua_command, file=sys.stderr)
                 try:
                     ua_process = subprocess.run(ua_command, shell=True, check=True, stdout=subprocess.PIPE, universal_newlines=True)

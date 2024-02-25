@@ -107,6 +107,8 @@ def parse_args():
             "upload agent")
     upload_debug_group.add_argument("--verbose", "-v", action="store_true",
         help="This flag allows you to specify upload agent --verbose mode.")
+    upload_debug_group.add_argument("--ua-progress", action="store_true",
+        help="This flag allows you to specify upload agent --ua_progress mode.")
 
     # Mutually exclusive inputs for triggering applet / workflow after upload
     downstream_analysis_group = parser.add_mutually_exclusive_group(required=False)
@@ -296,6 +298,8 @@ def run_sync_dir(lane, args, finish=False):
     invocation.extend(["--auth-token", args.api_token])
     if args.verbose:
         invocation.append("--verbose")
+    if args.ua_progress:
+        invocation.append("--ua_progress")
     if args.dxpy_upload:
         invocation.append("--dxpy-upload")
     if finish:
@@ -421,7 +425,8 @@ def main():
             run_sync_dir(lane, args)
 
         # if the next upload is going to be 1 hour after the initial start, then terminate and let the cron job pick it up
-        if args.hourly_restart and (time.time() + args.sync_interval < initial_start_time + 3600):
+        if args.hourly_restart and (time.time() + args.sync_interval > initial_start_time + 3600):
+            print_stderr("exiting, next run interval will be hourly cron initiated")
             sys.exit() 
 
         # Wait at least the minimum time interval before running the loop again
