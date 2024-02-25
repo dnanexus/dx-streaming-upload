@@ -303,7 +303,10 @@ def local_upload_has_lapsed(folder, config):
     """ Determines whether an incomplete RUN directory sync has "lapsed", ie
     it has failed and need to be re-triggered. Local_upload_has_lapsed will return
     True if there has been no update to the local LOG file for N_INTERVALS_TO_WAIT *
-    config['min_interval']"""
+    config['min_interval']
+    Note: with the current flock mechanism on the cron job, this might not be necessary anymore,
+    so if this is called for a folder that has a valid local log file, then return True.
+    """
 
     local_log_files = glob.glob('{0}/*{1}*'.format(config['log_dir'], folder))
     if not local_log_files:
@@ -332,9 +335,11 @@ def local_upload_has_lapsed(folder, config):
     mod_time = max([os.path.getmtime(path) for path in local_log_files])
     elapsed_time = time.time() - mod_time
 
-    return ((elapsed_time / config['min_interval']) > N_INTERVALS_TO_WAIT)
+    # with flock in cron, this should not be a necessary check anymore
+    #return ((elapsed_time / config['min_interval']) > N_INTERVALS_TO_WAIT)
+    return True
 
-def check_complete_sync(synced_folders, config):
+def check_incomplete_sync(synced_folders, config):
     """ Check whether the RUN folder sync is complete by querying the state
     of the sentinel record (closed = complete, open = incomplete). Returns
     a list of incomplete syncs which have been deemed to be inactive, according
@@ -490,7 +495,7 @@ def main():
 
     folders_to_sync = []
     if synced_folders:
-        incomplete_syncs = check_complete_sync(synced_folders, streaming_config)
+        incomplete_syncs = check_incomplete_sync(synced_folders, streaming_config)
         folders_to_sync += incomplete_syncs
         if DEBUG: print("==DEBUG== Got incomplete folders: ", incomplete_syncs)
 
