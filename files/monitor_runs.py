@@ -385,7 +385,7 @@ def _trigger_streaming_upload(folder, config):
         command += ['--verbose']
 
     if config['ua_progress']:
-        command =+ ['--progress']
+        command += ['--ua-progress']
         
     if config['novaseq']:
         command += ['-n']

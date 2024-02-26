@@ -207,24 +207,26 @@ def parse_args():
                         '\n' +
                         '\n')
 
-    upload_debug_group = parser.add_mutually_exclusive_group(required=False)
-    upload_debug_group.add_argument('--dxpy-upload', '-d', action='store_true',
-                                    help='This flag allows you to specify whether to use dxpy' +
-                                    '\n' + 'instead of the default Upload Agent to upload your' +
-                                    '\n' + 'data.' +
-                                    '\n' +
-                                    '\n')
-    upload_debug_group.add_argument('--verbose', '-v', action='store_true',
-                                    help='This flag allows you to specify upload agent' +
-                                    '\n' + '--verbose mode.' +
-                                    '\n' +
-                                    '\n')
-    upload_debug_group.add_argument('--ua_progress', action='store_true',
-                                    help='This flag allows you to specify upload agent' +
-                                    '\n' + '--progress mode.' +
-                                    '\n' +
-                                    '\n')
+    # Mutually exclusive group that contains a group is not supported
+    #upload_debug_group = parser.add_mutually_exclusive_group(required=False)
+    parser.add_argument('--dxpy-upload', '-d', action='store_true',
+                        help='This flag allows you to specify whether to use dxpy' +
+                        '\n' + 'instead of the default Upload Agent to upload your' +
+                        '\n' + 'data.' +
+                        '\n' +
+                        '\n')
 
+    ua_group=parser.add_argument_group('ua group')
+    ua_group.add_argument('--verbose', '-v', action='store_true',
+                          help='This flag allows you to specify upload agent' +
+                          '\n' + '--verbose mode.' +
+                          '\n' +
+                          '\n')
+    ua_group.add_argument('--ua_progress', action='store_true',
+                          help='This flag allows you to specify upload agent' +
+                          '\n' + '--progress mode.' +
+                          '\n' +
+                          '\n')
 
     age_group = parser.add_mutually_exclusive_group(required=False)
     age_group.add_argument('--min-age', '-m', type=int, metavar='<seconds>',

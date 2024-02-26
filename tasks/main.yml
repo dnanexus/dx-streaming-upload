@@ -81,7 +81,10 @@
 
 # Edit config file to customize to user-provided parameters
 - name: Change config file's novaseq flag
-  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^novaseq:.*' line='novaseq: {{ novaseq }}'"
+  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^novaseq:.*' line='novaseq: {{ item.novaseq }}'"
+  with_items: "{{ monitored_users }}"
+  become: yes
+  become_user: "{{ item.username }}"
   when: novaseq is defined
 
 - name: Change config file's hourly restart flag

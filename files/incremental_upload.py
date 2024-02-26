@@ -100,14 +100,15 @@ def parse_args():
     parser.add_argument("-Z", "--hourly-restart", dest="hourly_restart", action='store_true',
             help="Only upload for 1 hour, then exit and restart.")
 
-    # Mutually exclusive inputs for verbose loggin (UA) vs dxpy upload
-    upload_debug_group = parser.add_mutually_exclusive_group(required=False)
-    upload_debug_group.add_argument("--dxpy-upload", "-d", action="store_true",
+    # Mutually exclusive inputs for groups are not supported
+    parser.add_argument("--dxpy-upload", "-d", action="store_true",
             help="This flag allows you to specify to use dxpy instead of " +
             "upload agent")
-    upload_debug_group.add_argument("--verbose", "-v", action="store_true",
+    
+    ua_group = parser.add_argument_group('ua options')
+    ua_group.add_argument("--verbose", "-v", action="store_true",
         help="This flag allows you to specify upload agent --verbose mode.")
-    upload_debug_group.add_argument("--ua-progress", action="store_true",
+    ua_group.add_argument("--ua-progress", action="store_true",
         help="This flag allows you to specify upload agent --ua_progress mode.")
 
     # Mutually exclusive inputs for triggering applet / workflow after upload
