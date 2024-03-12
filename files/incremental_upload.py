@@ -425,14 +425,16 @@ def main():
                continue
             run_sync_dir(lane, args)
 
-        # if the next upload is going to be 1 hour after the initial start, then terminate and let the cron job pick it up
-        if args.hourly_restart and (time.time() + args.sync_interval > initial_start_time + 3600):
-            print_stderr("exiting, next run interval will be hourly cron initiated")
-            sys.exit() 
-
-        # Wait at least the minimum time interval before running the loop again
         cur_time = time.time()
         diff = cur_time - start_time
+
+        # if the next upload is going to be 1 hour after the initial start, then terminate and let the cron job pick it up
+        if args.hourly_restart and ((cur_time + args.sync_interval) // 3600 > cur_time // 3600):
+            print_stderr("EXITING: Next run interval will be hourly cron initiated")
+            sys.exit() 
+
+        # Wait at least the minimum time interval before running the loop again.  If the previous loop
+        # ran longer than the sync_interval, then run loop immediately
         if diff < args.sync_interval:
             print_stderr("Sleeping for %d seconds" % (int(args.sync_interval - diff)))
             time.sleep(int(args.sync_interval - diff))
