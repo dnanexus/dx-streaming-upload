@@ -87,7 +87,7 @@
   with_items: "{{ monitored_users }}"
   become: yes
   become_user: "{{ item.username }}"
-  when: novaseq is defined
+  when: item.novaseq is defined
 
 - name: Change config file's hourly restart flag
   lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^hourly_restart:.*' line='hourly_restart: {{ hourly_restart }}'"
