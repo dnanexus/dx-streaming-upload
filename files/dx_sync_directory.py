@@ -403,6 +403,8 @@ def split_into_tar_files(files_to_upload, log, args):
                 'specify --min-tar-size to be smaller', file=sys.stderr)
         return []
 
+    print(f"--- {len(tars_to_upload)} tar files, {total_size/1024/1024/1024:.2f} GB", file=sys.stderr)
+
     return tars_to_upload
 
 def create_tar_file(files_to_upload, log, args):
