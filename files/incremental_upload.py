@@ -97,15 +97,19 @@ def parse_args():
             help="An optional list of regex patterns to exclude.")
     parser.add_argument("-n", "--novaseq", dest="novaseq", action='store_true',
             help="If Novaseq is used, this parameter has to be used.")
+    parser.add_argument("-Z", "--hourly-restart", dest="hourly_restart", action='store_true',
+            help="Only upload for 1 hour, then exit and restart.")
 
-
-    # Mutually exclusive inputs for verbose loggin (UA) vs dxpy upload
-    upload_debug_group = parser.add_mutually_exclusive_group(required=False)
-    upload_debug_group.add_argument("--dxpy-upload", "-d", action="store_true",
+    # Mutually exclusive inputs for groups are not supported
+    parser.add_argument("--dxpy-upload", "-d", action="store_true",
             help="This flag allows you to specify to use dxpy instead of " +
             "upload agent")
-    upload_debug_group.add_argument("--verbose", "-v", action="store_true",
+    
+    ua_group = parser.add_argument_group('ua options')
+    ua_group.add_argument("--verbose", "-v", action="store_true",
         help="This flag allows you to specify upload agent --verbose mode.")
+    ua_group.add_argument("--ua-progress", action="store_true",
+        help="This flag allows you to specify upload agent --ua_progress mode.")
 
     # Mutually exclusive inputs for triggering applet / workflow after upload
     downstream_analysis_group = parser.add_mutually_exclusive_group(required=False)
@@ -295,6 +299,8 @@ def run_sync_dir(lane, args, finish=False):
     invocation.extend(["--auth-token", args.api_token])
     if args.verbose:
         invocation.append("--verbose")
+    if args.ua_progress:
+        invocation.append("--ua_progress")
     if args.dxpy_upload:
         invocation.append("--dxpy-upload")
     if finish:
@@ -402,6 +408,7 @@ def main():
     print_stderr("Maximum allowable time for run to complete: %d seconds." %seconds_to_wait)
 
     initial_start_time = time.time()
+    loop = 1
     # While loop waiting for RTAComplete.txt or RTAComplete.xml, or CopyComplete.txt, in case of a NovaSeq run
     while not termination_file_exists(args.novaseq, args.run_dir):
         start_time=time.time()
@@ -418,9 +425,16 @@ def main():
                continue
             run_sync_dir(lane, args)
 
-        # Wait at least the minimum time interval before running the loop again
         cur_time = time.time()
         diff = cur_time - start_time
+
+        # if the next upload is going to be 1 hour after the initial start, then terminate and let the cron job pick it up
+        if args.hourly_restart and ((cur_time + args.sync_interval) // 3600 > cur_time // 3600):
+            print_stderr("EXITING: Next run interval will be hourly cron initiated")
+            sys.exit() 
+
+        # Wait at least the minimum time interval before running the loop again.  If the previous loop
+        # ran longer than the sync_interval, then run loop immediately
         if diff < args.sync_interval:
             print_stderr("Sleeping for %d seconds" % (int(args.sync_interval - diff)))
             time.sleep(int(args.sync_interval - diff))

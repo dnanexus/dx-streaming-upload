@@ -207,19 +207,26 @@ def parse_args():
                         '\n' +
                         '\n')
 
-    upload_debug_group = parser.add_mutually_exclusive_group(required=False)
-    upload_debug_group.add_argument('--dxpy-upload', '-d', action='store_true',
-                                    help='This flag allows you to specify whether to use dxpy' +
-                                    '\n' + 'instead of the default Upload Agent to upload your' +
-                                    '\n' + 'data.' +
-                                    '\n' +
-                                    '\n')
-    upload_debug_group.add_argument('--verbose', '-v', action='store_true',
-                                    help='This flag allows you to specify upload agent' +
-                                    '\n' + '--verbose mode.' +
-                                    '\n' +
-                                    '\n')
+    # Mutually exclusive group that contains a group is not supported
+    #upload_debug_group = parser.add_mutually_exclusive_group(required=False)
+    parser.add_argument('--dxpy-upload', '-d', action='store_true',
+                        help='This flag allows you to specify whether to use dxpy' +
+                        '\n' + 'instead of the default Upload Agent to upload your' +
+                        '\n' + 'data.' +
+                        '\n' +
+                        '\n')
 
+    ua_group=parser.add_argument_group('ua group')
+    ua_group.add_argument('--verbose', '-v', action='store_true',
+                          help='This flag allows you to specify upload agent' +
+                          '\n' + '--verbose mode.' +
+                          '\n' +
+                          '\n')
+    ua_group.add_argument('--ua_progress', action='store_true',
+                          help='This flag allows you to specify upload agent' +
+                          '\n' + '--progress mode.' +
+                          '\n' +
+                          '\n')
 
     age_group = parser.add_mutually_exclusive_group(required=False)
     age_group.add_argument('--min-age', '-m', type=int, metavar='<seconds>',
@@ -396,6 +403,8 @@ def split_into_tar_files(files_to_upload, log, args):
                 'specify --min-tar-size to be smaller', file=sys.stderr)
         return []
 
+    print(f"--- {len(tars_to_upload)} tar files, {total_size/1024/1024/1024:.2f} GB", file=sys.stderr)
+
     return tars_to_upload
 
 def create_tar_file(files_to_upload, log, args):
@@ -457,7 +466,10 @@ def upload_tar_files(log, args):
                 if args.verbose:
                     opts += '--verbose '
 
-                ua_command = "ua --project %s --folder %s --do-not-compress --wait-on-close --progress %s %s --auth-token %s --chunk-size 25M" % (tar_destination_project, tar_destination_folder, opts, tar_file, args.auth_token)
+                if args.ua_progress:
+                    opts += '--progress '
+
+                ua_command = "ua --project %s --folder %s --do-not-compress --wait-on-close %s %s --auth-token %s --chunk-size 25M" % (tar_destination_project, tar_destination_folder, opts, tar_file, args.auth_token)
                 print(ua_command, file=sys.stderr)
                 try:
                     ua_process = subprocess.run(ua_command, shell=True, check=True, stdout=subprocess.PIPE, universal_newlines=True)

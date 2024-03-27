@@ -40,7 +40,10 @@ CONFIG_DEFAULT = {
     "downstream_input": '',
     "n_streaming_threads":1,
     "delay_sample_sheet_upload": False,
-    "novaseq": False
+    "novaseq": False,
+    "hourly_restart": False,
+    "ua_progress": True,
+    "verbose": True
 }
 
 # Base folder in which the RUN folders are deposited
@@ -300,7 +303,10 @@ def local_upload_has_lapsed(folder, config):
     """ Determines whether an incomplete RUN directory sync has "lapsed", ie
     it has failed and need to be re-triggered. Local_upload_has_lapsed will return
     True if there has been no update to the local LOG file for N_INTERVALS_TO_WAIT *
-    config['min_interval']"""
+    config['min_interval']
+    Note: with the current flock mechanism on the cron job, this might not be necessary anymore,
+    so if this is called for a folder that has a valid local log file, then return True.
+    """
 
     local_log_files = glob.glob('{0}/*{1}*'.format(config['log_dir'], folder))
     if not local_log_files:
@@ -329,10 +335,12 @@ def local_upload_has_lapsed(folder, config):
     mod_time = max([os.path.getmtime(path) for path in local_log_files])
     elapsed_time = time.time() - mod_time
 
-    return ((elapsed_time / config['min_interval']) > N_INTERVALS_TO_WAIT)
+    # with flock in cron, this should not be a necessary check anymore
+    #return ((elapsed_time / config['min_interval']) > N_INTERVALS_TO_WAIT)
+    return True
 
-def check_complete_sync(synced_folders, config):
-    """ Check whether the RUN folder sync is complete by querying the state
+def check_incomplete_sync(synced_folders, config):
+    """ Check whether the RUN folder sync is incomplete by querying the state
     of the sentinel record (closed = complete, open = incomplete). Returns
     a list of incomplete syncs which have been deemed to be inactive, according
     to the local_upload_has_lapsed function"""
@@ -371,11 +379,19 @@ def _trigger_streaming_upload(folder, config):
                "-R", config['n_retries'],
                "-D", config['run_length'],
                "-I", config['n_seq_intervals'],
-               "-u", config['n_upload_threads'],
-               "--verbose"]
+               "-u", config['n_upload_threads']]
 
+    if config['verbose']:
+        command += ['--verbose']
+
+    if config['ua_progress']:
+        command += ['--ua-progress']
+        
     if config['novaseq']:
         command += ['-n']
+
+    if config['hourly_restart']:
+        command +=['-Z']
 
     if config['exclude'] != '':
         command += ["-x", config['exclude']]
@@ -427,6 +443,7 @@ def trigger_streaming_upload(folders, config):
 def main():
     """ Main entry point """
     args = parse_args()
+    if DEBUG: print("==DEBUG== Starting monitor_runs at ", time.time())
     if DEBUG: print("==DEBUG== Got args, ", args)
 
     # Make sure that we can find the incremental_upload scripts
@@ -478,7 +495,7 @@ def main():
 
     folders_to_sync = []
     if synced_folders:
-        incomplete_syncs = check_complete_sync(synced_folders, streaming_config)
+        incomplete_syncs = check_incomplete_sync(synced_folders, streaming_config)
         folders_to_sync += incomplete_syncs
         if DEBUG: print("==DEBUG== Got incomplete folders: ", incomplete_syncs)
 
@@ -486,7 +503,7 @@ def main():
     folders_to_sync += unsynced_folders
     folders_to_sync = ["{0}/{1}".format(args.directory, folder) for folder in folders_to_sync]
 
-    if DEBUG: "==DEBUG== Folders to sync: {0}".format(folders_to_sync)
+    if DEBUG: print("==DEBUG== Folders to sync: {0}".format(folders_to_sync))
 
     trigger_streaming_upload(folders_to_sync, streaming_config)
 
