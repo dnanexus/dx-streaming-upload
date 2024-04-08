@@ -48,6 +48,8 @@
 
 # Logging into DNAnexus account
 - name: Log in to DNAnexus account if dx_user_token is provided
+  environment:
+    PATH: "/usr/local/bin:{{ ansible_env.PATH }}"
   shell: dx login --token {{ item.dx_user_token if 'dx_user_token' in item else dx_token }} --noprojects
   become: yes
   become_user: "{{ item.username }}"
