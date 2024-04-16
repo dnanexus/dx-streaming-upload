@@ -4,19 +4,14 @@
 docker run -t ubuntu:20.04
 
 # install necessary packages
-apt-get update
-apt-get install -y python3-pip python3-dev cron
+ apt-get update -qq
+ apt-get install -qq cron python3-pip ansible git
 
-
-apt-get remove --purge ansible
-apt-get install software-properties-common -y
-apt-add-repository ppa:ansible/ansible -y
-apt-get update
-apt-get install ansible git nano sudo -y
-
-cd /opt
-# get dx-streaming uploader code
-git clone -b APPS-742-novaseq-fix --single-branch https://github.com/dnanexus-rnd/dx-streaming-upload.git
+ # install dx-streaming-upload
+ git clone -b TER-35-add-cron_log_folder-and-append_log-option --single-branch https://github.com/dnanexus-rnd/dx-streaming-upload.git /opt/dx-streaming-upload
+ 
+ # install other utils
+ apt-get install -qq vim nano sudo
 ```
 
 # MiSeq/HiSeq setup
