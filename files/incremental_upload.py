@@ -353,7 +353,8 @@ def main():
                 "uploaded": False
                 })
     # TODO check the log file to see if it has been completed: lane_info[0]["log_path"]
-    # If yes: -> exit(0)
+    # If yes: -> sys.exit() 
+
 
     # Create upload sentinel for upload, if record already exists, use that
     done_count = 0
