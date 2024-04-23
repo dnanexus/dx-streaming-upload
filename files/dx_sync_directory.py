@@ -565,7 +565,6 @@ def main():
 
     check_log(log, args)
 
-    # TODO: start_time = current_timestamp
     files_to_upload = get_files_to_upload(log, args)
 
     tars_to_upload = split_into_tar_files(files_to_upload, log, args)
