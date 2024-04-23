@@ -505,6 +505,7 @@ def main():
 
     if DEBUG: print("==DEBUG== Folders to sync: {0}".format(folders_to_sync))
 
+    # INVOKE incremental_upload
     trigger_streaming_upload(folders_to_sync, streaming_config)
 
 if __name__ == "__main__":

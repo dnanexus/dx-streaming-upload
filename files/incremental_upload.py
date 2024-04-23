@@ -329,18 +329,19 @@ def main():
     REMOTE_READS_FOLDER = "/" + run_id + "/reads"
     REMOTE_ANALYSIS_FOLDER = "/" + run_id + "/analyses"
 
-    FILE_PREFIX = "run." + run_id+ ".lane."
+    FILE_PREFIX = "run." + run_id+ ".lane." # name of the run.xxxxx.lane.all.log file
 
     # Prep log & record names
     lane_info = []
 
     # If no lanes are specified, set lane to all, otherwise, set to array of lanes
+    # DEPRECATED
     if not args.num_lanes:
         lanes_to_upload = ["all"]
-    else:
+    else: # UNREACHABLE CODE
         lanes_to_upload = [str(i) for i in range(1, args.num_lanes+1)]
 
-    for lane in lanes_to_upload:
+    for lane in lanes_to_upload: # NOTE: lanes_to_upload = ["all"]
         lane_prefix = FILE_PREFIX + lane
 
         lane_info.append({
@@ -351,6 +352,8 @@ def main():
                 "remote_folder": get_target_folder(REMOTE_RUN_FOLDER, lane),
                 "uploaded": False
                 })
+    # TODO check the log file to see if it has been completed: lane_info[0]["log_path"]
+    # If yes: -> exit(0)
 
     # Create upload sentinel for upload, if record already exists, use that
     done_count = 0
@@ -492,7 +495,10 @@ def main():
         record.set_details(details)
 
         record.close()
-
+        # TODO: add a marker to the run.log said that upload completed
+        # file name: lane["log_file_id"]
+        # run.xxxxx.lane.all.log (JSON file)
+        # read_log -> set the marker -> write_log
     print_stderr("Run %s successfully streamed!" % (run_id))
 
     downstream_input = {}
