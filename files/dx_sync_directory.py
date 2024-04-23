@@ -577,7 +577,8 @@ def main():
         # duration = timestamp() - st
         # TODO: check time
         # if (hour(current_time + duration) - hour(current_time) > 1):
-        #   sys.exit()
+        #   print("It took too long to upload the tar file: {}. Let the subsequence cron pick up the other tars")
+        #   break
 
     # Run through upload & remove in case last invocation was interrupted
     if len(tars_to_upload) == 0:
