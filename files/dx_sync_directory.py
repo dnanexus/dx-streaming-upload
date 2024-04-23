@@ -565,14 +565,20 @@ def main():
 
     check_log(log, args)
 
+    # TODO: start_time = current_timestamp
     files_to_upload = get_files_to_upload(log, args)
 
     tars_to_upload = split_into_tar_files(files_to_upload, log, args)
 
     for tar in tars_to_upload:
+        # st = timestamp()
         log = create_tar_file(tar, log, args)
         log = upload_tar_files(log, args)
         log = remove_tar_files(log, args)
+        # duration = timestamp() - st
+        # TODO: check time
+        # if (hour(current_time + duration) - hour(current_time) > 1):
+        #   sys.exit()
 
     # Run through upload & remove in case last invocation was interrupted
     if len(tars_to_upload) == 0:
