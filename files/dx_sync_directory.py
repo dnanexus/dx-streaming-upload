@@ -18,6 +18,8 @@ import re
 import subprocess
 import dxpy
 import dxpy.utils.resolver
+from dxpy.utils.printing import YELLOW
+
 
 # For more information about script and inputs run the script with --help option
 # $ python3 dx_sync_directory.py --help
@@ -407,10 +409,10 @@ def split_into_tar_files(files_to_upload, log, args):
 
     return tars_to_upload
 
-def create_tar_file(files_to_upload, log, args):
+def create_tar_file(tar_object: dict = {"size": 0, "files": []}, log: dict, args):
     """Create a tar file containing the given files to be uploaded."""
 
-    if len(files_to_upload["files"]) == 0:
+    if len(tar_object["files"]) == 0:
         print("\n--- No files to upload, skipping tar file creation...", file=sys.stderr)
         return log
 
@@ -424,7 +426,7 @@ def create_tar_file(files_to_upload, log, args):
 
     log_updates = {}
 
-    for f_abs in files_to_upload["files"]:
+    for f_abs in tar_object["files"]:
         f_rel = os.path.relpath(f_abs, args.sync_dir)
         tar_file.add(f_abs, arcname=f_rel, recursive=False)
         log_updates[f_abs] = {'mtime': os.path.getmtime(f_abs)}
@@ -433,7 +435,7 @@ def create_tar_file(files_to_upload, log, args):
     tar_end = time.time()
 
     log['tar_files'][tar_full_path] = {'status': 'tarred',
-                                       'size': files_to_upload["size"],
+                                       'size': tar_object["size"],
                                        'timestamps': {'tar_start': tar_start,
                                                       'tar_end': tar_end}
                                       }
