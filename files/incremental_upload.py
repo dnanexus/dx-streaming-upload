@@ -224,7 +224,7 @@ def run_command_with_retry(my_num_retries, my_command):
         print_stderr("Running (Try %d of %d): %s" %
                 (trys, my_num_retries, my_command))
         try:
-            process = sub.run(my_command, check=True, stdout=sub.PIPE, universal_newlines=True)
+            process = sub.run(my_command, check=True, stdout=sub.PIPE, universal_newlines=True, env=os.environ.copy())
             output = process.stdout.strip()
             return output
         except sub.CalledProcessError as e:

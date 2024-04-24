@@ -1,0 +1,17 @@
+---
+- hosts: localhost
+  vars:
+    monitored_users:
+      - username: root
+        monitored_directories:
+          - /opt/dx-streaming-upload/tests/run-folder-a/
+        min_size: 5
+        max_size: 10000
+        n_seq_intervals: 2
+        n_retries: 5
+    novaseq: True
+    mode: debug
+    upload_project: project-GjYYGb80YF3FyZ97xj58GPg8
+    sync_duration_threshold: 60 # Only active for mode=debug
+  roles:
+    - dx-streaming-upload

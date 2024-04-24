@@ -1,4 +1,5 @@
 ---
+
 # Install Dx-toolkit
 - name: Get DX toolkit
   pip:
@@ -225,7 +226,7 @@
   cron: >
     name="DNAnexus monitor runs (debug) {{ item.1 }}"
     user="{{ item.0.username }}"
-    job="flock -w 5 /var/lock/dnanexus_uploader_{{ item.1 | regex_replace('\\/$', '') | basename  }}.lock bash -ex -c 'PATH=/opt/dnanexus-upload-agent:$PATH; python3 /opt/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ item.1 }} {{ \'-A\' if \'applet\' in item.0 else \'\' }} {{ item.0.applet if \'applet\' in item.0 else \'\'}} {{ \'-w\' if \'workflow\' in item.0 else \'\' }} {{ item.0.workflow if \'workflow\' in item.0 else \'\'}} {{ \'-s\' if \'script\' in item.0 else \'\' }} {{ item.0.script if \'script\' in item.0 else \'\'}} -v {{ \'>>\' if append_log | default(false) else \'>\' }} {{ cron_log_folder | default(\'~\') }}/monitor_{{ item.1 | regex_replace('\\/$', '') | basename }}.log 2>&1' {{ \'>>\' if append_log | default(false) else \'>\'}} {{ cron_log_folder | default(\'~\') }}/dx-stream_cron_{{ item.1 | regex_replace('\\/$', '') | basename }}.log 2>&1"
+    job="flock -w 5 /var/lock/dnanexus_uploader_{{ item.1 | regex_replace('\\/$', '') | basename  }}.lock bash -ex -c 'export SYNC_DURATION_THRESHOLD={{ sync_duration_threshold | default(3600) }}; PATH=/opt/dnanexus-upload-agent:$PATH; python3 /opt/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ item.1 }} {{ \'-A\' if \'applet\' in item.0 else \'\' }} {{ item.0.applet if \'applet\' in item.0 else \'\'}} {{ \'-w\' if \'workflow\' in item.0 else \'\' }} {{ item.0.workflow if \'workflow\' in item.0 else \'\'}} {{ \'-s\' if \'script\' in item.0 else \'\' }} {{ item.0.script if \'script\' in item.0 else \'\'}} -v {{ \'>>\' if append_log | default(false) else \'>\' }} {{ cron_log_folder | default(\'~\') }}/monitor_{{ item.1 | regex_replace('\\/$', '') | basename }}.log 2>&1' {{ \'>>\' if append_log | default(false) else \'>\'}} {{ cron_log_folder | default(\'~\') }}/dx-stream_cron_{{ item.1 | regex_replace('\\/$', '') | basename }}.log 2>&1"
   with_subelements:
         - "{{ monitored_users }}"
         - monitored_directories

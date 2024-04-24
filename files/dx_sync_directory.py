@@ -409,7 +409,7 @@ def split_into_tar_files(files_to_upload, log, args):
 
     return tars_to_upload
 
-def create_tar_file(tar_object: dict = {"size": 0, "files": []}, log: dict, args):
+def create_tar_file(tar_object: dict = {"size": 0, "files": []}, log: dict = {}, args = None) -> dict:
     """Create a tar file containing the given files to be uploaded."""
 
     if len(tar_object["files"]) == 0:
@@ -452,6 +452,7 @@ def upload_tar_files(log, args):
     tar_destination_project, tar_destination_folder, _ = dxpy.utils.resolver.resolve_path(args.tar_destination, expected='folder')
 
     upload_count = 0
+    uploaded_tar_files = []
     for tar_file in log['tar_files']:
         if log['tar_files'][tar_file]['status'] == 'tarred':
             print("Uploading %s to %s:%s..." % (tar_file, tar_destination_project,
@@ -480,6 +481,8 @@ def upload_tar_files(log, args):
                     sys.exit("ERROR: Tar file %s was not uploaded. Please check log for progress and rerun script" % tar_file)
             upload_end = time.time()
 
+            uploaded_tar_files.append({"local_path": tar_file, "remote_path": f"{tar_destination_project}:{os.path.join(tar_destination_folder, os.path.basename(tar_file))}"})
+
             log['tar_files'][tar_file]['status'] = 'uploaded'
             log['tar_files'][tar_file]['file_id'] = dx_file_id
             log['tar_files'][tar_file]['timestamps']['upload_start'] = upload_start
@@ -487,7 +490,8 @@ def upload_tar_files(log, args):
             log = update_log(log, args)
     if upload_count == 0:
         print("\tNo files uploaded...", file=sys.stderr)
-    return log
+
+    return log, uploaded_tar_files
 
 def remove_tar_files(log, args):
     """Removes tar files that have been uploaded from the local disk."""
@@ -556,7 +560,6 @@ def update_log(log, args):
 
 def main():
     """Main function."""
-
     args = parse_args()
 
     print('\nUser Input:\n%s\n' % args, file=sys.stderr)
@@ -571,21 +574,22 @@ def main():
 
     tars_to_upload = split_into_tar_files(files_to_upload, log, args)
 
-    for tar in tars_to_upload:
-        # st = timestamp()
-        log = create_tar_file(tar, log, args)
-        log = upload_tar_files(log, args)
-        log = remove_tar_files(log, args)
-        # duration = timestamp() - st
-        # TODO: check time
-        # if (hour(current_time + duration) - hour(current_time) > 1):
-        #   print("It took too long to upload the tar file: {}. Let the subsequence cron pick up the other tars")
-        #   break
-
     # Run through upload & remove in case last invocation was interrupted
     if len(tars_to_upload) == 0:
-        log = upload_tar_files(log, args)
+        log, _ = upload_tar_files(log, args)
         log = remove_tar_files(log, args)
+
+    for tar in tars_to_upload:
+        start_ts = time.time()
+        log = create_tar_file(tar_object=tar, log=log, args=args)
+        log, uploaded_tar_files = upload_tar_files(log, args)
+        log = remove_tar_files(log, args)
+        duration = time.time() - start_ts
+
+        # gracefully exit program when the upload iteration exceeds the threshold (1hr)
+        if duration > int(os.environ.get("SYNC_DURATION_THRESHOLD", 3600)):
+            print(YELLOW(f"WARNING: It took too long to upload the tar file(s)\n{json.dumps(uploaded_tar_files)}\nStop uploading and Let the subsequent invocations pick up the other tar files"), file=sys.stderr)
+            break
 
     print_all_file_ids(log)
 
