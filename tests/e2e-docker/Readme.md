@@ -1,6 +1,5 @@
 # Prerequisites
 - Docker must be installed
-- Docker disk must have at least 150gb size
 - Build base image
 ```bash
 cd tests/e2e-docker

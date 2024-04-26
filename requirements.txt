@@ -1,1 +1,2 @@
 dxpy==0.367.0
+humanfriendly==10.0

@@ -587,7 +587,7 @@ def main():
         print(
             f"\n[{os.path.basename(__file__)}][Upload Iteration {i}] time ellapsed " +
             f"{humanfriendly.format_timespan(start_time - initial_time)} secs since the initial start time\n",
-            file=sys.stdout)
+            file=sys.stderr)
         log = create_tar_file(tar_object=tar, log=log, args=args)
         log, uploaded_tar_files = upload_tar_files(log, args)
         log = remove_tar_files(log, args)
@@ -595,7 +595,7 @@ def main():
         duration = end_time - start_time
         print(
             f"\n[{os.path.basename(__file__)}][Upload Iteration {i}] it took {duration} " +
-            "secs to upload\n", file=sys.out)
+            "secs to upload\n", file=sys.stderr)
         #
         # Getting threshold limit from env if any
         # The env is decided by the variable `sync_duration_threshold` from the playbook file

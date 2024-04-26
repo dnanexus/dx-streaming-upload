@@ -6,9 +6,11 @@
         monitored_directories:
           - /opt/dx-streaming-upload/tests/run-folder-a/
         min_size: 5
-        max_size: 10000
+        max_size: 10
         n_seq_intervals: 2
         n_retries: 5
+        ua_progress: false
+        verbose: false
     novaseq: True
     mode: debug
     upload_project: project-GjYYGb80YF3FyZ97xj58GPg8
