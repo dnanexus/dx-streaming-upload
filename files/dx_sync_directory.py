@@ -594,7 +594,7 @@ def main():
         end_time = time.time()
         duration = end_time - start_time
         print(
-            f"\n[{os.path.basename(__file__)}][Upload Iteration {i}] it took {duration} " +
+            f"\n[{os.path.basename(__file__)}][Upload Iteration {i}] it took {humanfriendly.format_timespan(duration)} " +
             "secs to upload\n", file=sys.stderr)
         #
         # Getting threshold limit from env if any
