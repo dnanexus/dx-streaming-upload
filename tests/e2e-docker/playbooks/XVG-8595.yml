@@ -12,6 +12,5 @@
     novaseq: True
     mode: debug
     upload_project: project-GjYYGb80YF3FyZ97xj58GPg8
-    sync_duration_threshold: 60 # Only active for mode=debug
   roles:
     - dx-streaming-upload

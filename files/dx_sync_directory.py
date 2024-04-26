@@ -19,6 +19,7 @@ import subprocess
 import dxpy
 import dxpy.utils.resolver
 from dxpy.utils.printing import YELLOW
+import humanfriendly
 
 
 # For more information about script and inputs run the script with --help option
@@ -579,16 +580,33 @@ def main():
         log, _ = upload_tar_files(log, args)
         log = remove_tar_files(log, args)
 
-    for tar in tars_to_upload:
-        start_ts = time.time()
+    initial_time = time.time()
+    for i, tar in enumerate(tars_to_upload, start=1):
+        start_time = time.time()
+        time_elapsed = start_time - initial_time
+        print(
+            f"\n[{os.path.basename(__file__)}][Upload Iteration {i}] time ellapsed " +
+            f"{humanfriendly.format_timespan(start_time - initial_time)} secs since the initial start time\n",
+            file=sys.stdout)
         log = create_tar_file(tar_object=tar, log=log, args=args)
         log, uploaded_tar_files = upload_tar_files(log, args)
         log = remove_tar_files(log, args)
-        duration = time.time() - start_ts
-
-        # gracefully exit program when the upload iteration exceeds the threshold (1hr)
-        if duration > int(os.environ.get("SYNC_DURATION_THRESHOLD", 3600)):
-            print(YELLOW(f"WARNING: It took too long to upload the tar file(s)\n{json.dumps(uploaded_tar_files)}\nStop uploading and Let the subsequent invocations pick up the other tar files"), file=sys.stderr)
+        end_time = time.time()
+        duration = end_time - start_time
+        print(
+            f"\n[{os.path.basename(__file__)}][Upload Iteration {i}] it took {duration} " +
+            "secs to upload\n", file=sys.out)
+        #
+        # Getting threshold limit from env if any
+        # The env is decided by the variable `sync_duration_threshold` from the playbook file
+        threshold = int(os.environ.get("SYNC_DURATION_THRESHOLD", 3600))
+        if (end_time + duration) // threshold > end_time // threshold:
+            print(
+                YELLOW(
+                    "\nWARNING: It took too long to upload the tar file(s)\n" +
+                    f"{json.dumps(uploaded_tar_files)}\nStop uploading and Let the subsequent invocations pick up " +
+                    "the other tar files"),
+                file=sys.stderr)
             break
 
     print_all_file_ids(log)
