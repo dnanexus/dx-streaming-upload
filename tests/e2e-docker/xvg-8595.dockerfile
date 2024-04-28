@@ -23,7 +23,6 @@
 FROM dsu:latest
 
 COPY .build-context ./dx-streaming-upload
-# NOTE: run-folder-a/180732_inprogress_novaseq (This folder already has test1.bin and test2.bin)
 # Create file for run-folder-a/180733_inprogress_novaseq
 RUN dd if=/dev/zero of=/opt/dx-streaming-upload/tests/run-folder-a/180731_complete_novaseq/output1.dat bs=12MB count=1
 RUN dd if=/dev/zero of=/opt/dx-streaming-upload/tests/run-folder-a/180731_complete_novaseq/output2.dat bs=12MB count=1
@@ -45,5 +44,4 @@ RUN dd if=/dev/zero of=/opt/dx-streaming-upload/tests/run-folder-a/180734_comple
 RUN rm -rf /opt/dx-streaming-upload/tests/run-folder-a/180732_inprogress_novaseq
 
 COPY ./playbooks/XVG-8595.yml /opt/playbook.yml
-COPY ./run.sh .
 ENTRYPOINT ["bash", "/opt/run.sh"]

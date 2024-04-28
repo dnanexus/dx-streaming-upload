@@ -11,5 +11,6 @@ RUN apt-get install -qq vim nano sudo
 
 WORKDIR /opt
 
-COPY ./viewlogs.sh ./viewlogs.sh
+COPY ./viewlogs.sh .
+COPY ./run.sh .
 RUN echo 'alias viewlogs="bash /opt/viewlogs.sh"' >> ~/.bashrc
