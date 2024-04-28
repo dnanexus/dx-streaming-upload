@@ -1,5 +1,5 @@
 # Avoid long running upload delay and gracefully exit and let the subsequent cron invocation handles
-# This docker file create a 3 8MB files and expect the container to 
+# This docker file create a number of 8MB files and expect the container to 
 # take more than 60 seconds to upload the tar file(s) during the loop.
 # In each iteration of dx_sync_directory, we have a condition check to replicate this behavior on production:
 # ---- (provided by Davis Feng)
@@ -22,11 +22,28 @@
 # log out WARNING message and gracefully exit the script
 FROM dsu:latest
 
-RUN git clone -b "XVG-8595-avoid-5-hours-delay" https://github.com/dnanexus-rnd/dx-streaming-upload.git
-RUN mkdir -p /opt/data
-RUN dd if=/dev/zero of=/opt/dx-streaming-upload/tests/run-folder-a/180732_inprogress_novaseq/output1.dat bs=8MB count=1
-RUN dd if=/dev/zero of=/opt/dx-streaming-upload/tests/run-folder-a/180732_inprogress_novaseq/output2.dat bs=8MB count=1
-RUN dd if=/dev/zero of=/opt/dx-streaming-upload/tests/run-folder-a/180732_inprogress_novaseq/output3.dat bs=8MB count=1
+COPY .build-context ./dx-streaming-upload
+# NOTE: run-folder-a/180732_inprogress_novaseq (This folder already has test1.bin and test2.bin)
+# Create file for run-folder-a/180733_inprogress_novaseq
+RUN dd if=/dev/zero of=/opt/dx-streaming-upload/tests/run-folder-a/180731_complete_novaseq/output1.dat bs=12MB count=1
+RUN dd if=/dev/zero of=/opt/dx-streaming-upload/tests/run-folder-a/180731_complete_novaseq/output2.dat bs=12MB count=1
+RUN dd if=/dev/zero of=/opt/dx-streaming-upload/tests/run-folder-a/180731_complete_novaseq/output3.dat bs=8MB count=1
+RUN dd if=/dev/zero of=/opt/dx-streaming-upload/tests/run-folder-a/180731_complete_novaseq/output4.dat bs=6MB count=1
+RUN dd if=/dev/zero of=/opt/dx-streaming-upload/tests/run-folder-a/180731_complete_novaseq/output5.dat bs=14MB count=1
+RUN dd if=/dev/zero of=/opt/dx-streaming-upload/tests/run-folder-a/180731_complete_novaseq/output6.dat bs=15MB count=1
+RUN dd if=/dev/zero of=/opt/dx-streaming-upload/tests/run-folder-a/180731_complete_novaseq/output7.dat bs=16MB count=1
+# Create file for run-folder-a/180734_inprogress_novaseq
+RUN dd if=/dev/zero of=/opt/dx-streaming-upload/tests/run-folder-a/180733_complete_novaseq/output1.dat bs=12MB count=1
+RUN dd if=/dev/zero of=/opt/dx-streaming-upload/tests/run-folder-a/180733_complete_novaseq/output2.dat bs=12MB count=1
+RUN dd if=/dev/zero of=/opt/dx-streaming-upload/tests/run-folder-a/180733_complete_novaseq/output3.dat bs=12MB count=1
+RUN dd if=/dev/zero of=/opt/dx-streaming-upload/tests/run-folder-a/180733_complete_novaseq/output4.dat bs=12MB count=1
+# Create file for run-folder-a/180735_inprogress_novaseq
+RUN dd if=/dev/zero of=/opt/dx-streaming-upload/tests/run-folder-a/180734_complete_novaseq/output1.dat bs=12MB count=1
+RUN dd if=/dev/zero of=/opt/dx-streaming-upload/tests/run-folder-a/180734_complete_novaseq/output2.dat bs=12MB count=1
+RUN dd if=/dev/zero of=/opt/dx-streaming-upload/tests/run-folder-a/180734_complete_novaseq/output3.dat bs=12MB count=1
+
+RUN rm -rf /opt/dx-streaming-upload/tests/run-folder-a/180732_inprogress_novaseq
+
 COPY ./playbooks/XVG-8595.yml /opt/playbook.yml
 COPY ./run.sh .
 ENTRYPOINT ["bash", "/opt/run.sh"]
