@@ -128,3 +128,6 @@ dmypy.json
 
 # test artifacts
 ansible.cfg
+
+# e2e docker test
+.build-context/

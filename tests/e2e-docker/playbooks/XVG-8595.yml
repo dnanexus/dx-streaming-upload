@@ -5,13 +5,23 @@
       - username: root
         monitored_directories:
           - /opt/dx-streaming-upload/tests/run-folder-a/
-        min_size: 5
-        max_size: 10
+        min_size: 1
+        max_size: 30
         n_seq_intervals: 2
-        n_retries: 5
+        n_retries: 3
         ua_progress: false
-        verbose: false
-    novaseq: True
+        min_age: 1
+        # To ovwewrite Wait time interval before running the loop again in incremental_upload.py
+        # To avoid forever loop at this condition
+        # ###
+        # while not termination_file_exists(args.novaseq, args.run_dir):
+        #   ...
+        #   if diff < args.sync_interval:
+        #      logger.debug("Sleeping for %d seconds" % (int(args.sync_interval - diff)))
+        #      time.sleep(int(args.sync_interval - diff))
+        # ###
+        min_interval: 30  #  IF in deploy mode, then this value should be 1800
+        novaseq: true
     mode: debug
     upload_project: project-GjYYGb80YF3FyZ97xj58GPg8
   roles:

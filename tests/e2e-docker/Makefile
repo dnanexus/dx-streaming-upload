@@ -3,6 +3,9 @@ base:
 	docker image prune -f
 
 build:
+	rm -rf ./.build-context
+	mkdir -p ./.build-context
+	cp -r ../../../dx-streaming-upload/* ./.build-context/
 	docker build --no-cache -f ${name}.dockerfile -t dsu-${name}:latest .
 	docker image prune -f
 
