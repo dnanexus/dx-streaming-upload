@@ -276,7 +276,7 @@ def upload_single_file(filepath, project, folder, properties):
         return f.id
 
     except dxpy.DXError as e:
-        logger.error("Failed to upload local file %s to %s:%s" %(filepath, project, folder))
+        logger.error("Failed to upload local file %s to %s:%s" % (filepath, project, folder))
         return None
 
 def run_sync_dir(lane, args, finish=False):
@@ -336,6 +336,39 @@ def termination_file_exists(novaseq, run_dir):
     else:
         return os.path.isfile(os.path.join(run_dir, "CopyComplete.txt"))
 
+
+def was_completed_run_uploaded(lane: dict, args: any) -> bool:
+    """Whether the completed run (where termination file exists) had been uploaded before.
+
+    :param lane: Lane data
+    :type lane: dict
+    :param args: Arguments to the main script
+    :type args: any
+    :rtype: bool
+    """
+    if os.path.exists(lane["log_path"]):
+        with open(lane["log_path"], "r+") as f:
+            log = json.load(f)
+        if termination_file_exists(args.novaseq, args.run_dir):
+            return log.get("was_completed_run_uploaded", False)
+    return False
+
+def mark_completed_run_uploaded(lane: dict):
+    """Mark uploaded for the Completed Run.
+
+    This function updates the run log file at key `was_completed_run_uploaded` to `True` 
+
+    :param lane: Lane data
+    :type lane: dict
+    """
+    if not os.path.exists(lane["log_path"]):
+        raise_error("Could not mark <Completed Run> uploaded because log path %s does not exists" % lane["log_path"])
+    with open(lane["log_path"], "r+") as f:
+        log = json.load(f)
+    log["was_completed_run_uploaded"] = True
+    with open(lane["log_path"], "w") as f:
+        json.dump(log, f, indent=4)
+
 def main():
     logger.info("-"*10 + "START" + "-"*10)
 
@@ -375,6 +408,9 @@ def main():
     # Create upload sentinel for upload, if record already exists, use that
     done_count = 0
     for lane in lane_info:
+        if was_completed_run_uploaded(lane=lane, args=args):
+            continue
+
         lane_num = lane["lane"]
         try:
             old_record = dxpy.find_one_data_object(zero_ok=True,
@@ -460,6 +496,8 @@ def main():
 
     # Final synchronization, upload data, set details
     for lane in lane_info:
+        if was_completed_run_uploaded(lane=lane, args=args):
+            continue
         if lane["uploaded"]:
             continue
         file_ids = run_sync_dir(lane, args, finish=True)
@@ -509,8 +547,8 @@ def main():
             details.update({'samplesheet_file_id': lane["samplesheet_file_id"]})
 
         record.set_details(details)
-
         record.close()
+        mark_completed_run_uploaded(lane)
 
     logger.info("Run %s successfully streamed!" % (run_id))
 
