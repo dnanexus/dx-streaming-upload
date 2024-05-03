@@ -10,6 +10,7 @@
         n_seq_intervals: 2
         n_retries: 3
         ua_progress: false
+        verbose: false
         min_age: 1
         # To ovwewrite Wait time interval before running the loop again in incremental_upload.py
         # To avoid forever loop at this condition
@@ -22,6 +23,8 @@
         # ###
         min_interval: 30  #  IF in deploy mode, then this value should be 1800
         novaseq: true
+    hourly_restart: true
+    append_log: true
     mode: debug
     upload_project: project-GjYYGb80YF3FyZ97xj58GPg8
   roles:

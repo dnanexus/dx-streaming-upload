@@ -244,7 +244,7 @@ def run_command_with_retry(my_num_retries, my_command):
             logger.info(f"output of dx_sync_directory.py is {output}")
             return output
         except sub.CalledProcessError as e:
-            if e.returncode == 9:
+            if e.returncode == 9: # error code of dx_sync_directory when one iteration took too long (span to the next hour) to upload
                 logger.info(msg="Triggering restarts")
                 sys.exit()
             logger.error("Failed to run `%s`, retrying (Try %s)" % (" ".join(my_command), trys))
