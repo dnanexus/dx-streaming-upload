@@ -101,6 +101,11 @@ def parse_args():
                         type=str,
                         required=True)
 
+    requiredNamed.add_argument('--log-dsu-name', 
+                        help='Name of the dsu run log file',
+                        type=str,
+                        required=True)
+
     requiredNamed.add_argument('--project', '-p',
                         help='DNAnexus project ID to upload to',
                         required=True)
@@ -477,17 +482,21 @@ def sync_log(args, attempts=3, delay_time=0.1):
         try:
             shutil.copy(os.path.join(os.environ["HOME"], args.log_name), 
                     os.path.join(args.log_folder, args.log_name))
+            shutil.copy(os.path.join(os.environ["HOME"], args.log_dsu_name), 
+                    os.path.join(args.log_folder, args.log_dsu_name))
             break
-        except:
-            logger.warn(f"{i + 1} attempt failed when trying to persist the log file to remote folder {args.log_folder}")
+        except Exception as err:
+            logger.warning(f"{i + 1} attempt failed when trying to persist the log file to remote folder {args.log_folder} due to error: {err}")
             time.sleep(delay_time)
             if i == (attempts - 1):
-                logger.warn(f"Failed to persist the log file to the remote folder {args.log_folder} after {attempts} attempts")
+                logger.warning(f"Failed to persist the log file to the remote folder {args.log_folder} after {attempts} attempts")
                 # Backup the log file to not be overwriten in the next cron  
                 backed_up_log = os.path.join(os.environ["HOME"], f"{args.log_name}_{int(time.time())}")
-                shutil.copy(os.path.join(os.environ["HOME"], args.log_name), 
-                    os.path.join(os.environ["HOME"], f"{args.log_name}_{int(time.time())}"))
-                logger.warn(f"Backed up the log file at {backed_up_log}")
+                backed_up_dsu_log = os.path.join(os.environ["HOME"], f"{args.log_dsu_name}_{int(time.time())}")
+                shutil.copy(os.path.join(os.environ["HOME"], args.log_name), backed_up_log)
+                shutil.copy(os.path.join(os.environ["HOME"], args.log_name), backed_up_dsu_log)
+                logger.warning(f"Backed up the log file at {backed_up_log}")
+                logger.warning(f"Backed up the dx-stream-cron log file at {backed_up_dsu_log}")
                 
 def main():
     """ Main entry point """
