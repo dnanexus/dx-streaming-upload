@@ -494,7 +494,7 @@ def sync_log(args, attempts=3, delay_time=0.1):
                 backed_up_log = os.path.join(os.environ["HOME"], f"{args.log_name}_{int(time.time())}")
                 backed_up_dsu_log = os.path.join(os.environ["HOME"], f"{args.log_dsu_name}_{int(time.time())}")
                 shutil.copy(os.path.join(os.environ["HOME"], args.log_name), backed_up_log)
-                shutil.copy(os.path.join(os.environ["HOME"], args.log_name), backed_up_dsu_log)
+                shutil.copy(os.path.join(os.environ["HOME"], args.log_dsu_name), backed_up_dsu_log)
                 logger.warning(f"Backed up the log file at {backed_up_log}")
                 logger.warning(f"Backed up the dx-stream-cron log file at {backed_up_dsu_log}")
                 
