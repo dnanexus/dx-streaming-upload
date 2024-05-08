@@ -18,6 +18,10 @@ import re
 import subprocess
 import dxpy
 import dxpy.utils.resolver
+from dxpy.utils.printing import YELLOW
+import humanfriendly
+import logging
+
 
 # For more information about script and inputs run the script with --help option
 # $ python3 dx_sync_directory.py --help
@@ -107,6 +111,16 @@ import dxpy.utils.resolver
 # - Another idea to avoid possible log corruption: don't overwrite the
 #   existing log file; instead, write to a new file, then move it
 #   (i.e., rename it to have the same name as the existing log file).
+
+logger = logging.getLogger(__name__)
+handler = logging.StreamHandler(sys.stderr)
+formatter = logging.Formatter(
+    fmt="[proc:%(process)d][%(filename)s][%(asctime)s][%(levelname)s] %(message)s",
+    datefmt="%b %d %Y, %I:%M:%S %p (%Z)"
+)
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
 
 def parse_args():
     """Parse the command-line arguments and canonicalize file path
@@ -254,6 +268,8 @@ def parse_args():
                            '\n')
 
     parser.add_argument('sync_dir', metavar='<directory>', help='Directory to sync.')
+    parser.add_argument("-Z", "--hourly-restart", dest="hourly_restart", action='store_true',
+            help="Only upload for 1 hour, then exit and restart.")
 
     args = parser.parse_args()
     return args
@@ -302,20 +318,20 @@ def check_inputs(args):
 def read_log(args):
     """Reads the log file."""
 
-    print('\n--- Reading log file...', file=sys.stderr)
+    logger.info('Reading log file ...')
 
     if os.path.exists(args.log_file):
         with open(args.log_file, 'r') as logf:
             return json.load(logf)
     else:
-        print('Log file not found, returning empty log.', file=sys.stderr)
+        logger.info('Log file not found, returning empty log.')
         return {'tar_files': {}, 'next_tar_index': 0, 'files': {},
                 'tar_destination': args.tar_destination, 'file_prefix': args.prefix,
                 'sync_dir': args.sync_dir, 'include_patterns': args.include_patterns,
                 'exclude_patterns': args.exclude_patterns}
 
 def check_log(log, args):
-    print('\n--- Checking that log matches inputs', file=sys.stderr)
+    logger.info('Checking that log matches inputs')
     try:
         log_sync_dir = log['sync_dir']
         if log_sync_dir != args.sync_dir:
@@ -338,9 +354,9 @@ def check_log(log, args):
                      (args.exclude_patterns, log_exclude))
 
         # Check that log has correct keys
-        if all (k in log for k in ("tar_files","next_tar_index", "files", "file_prefix")):
-            print('\n--- All required keys present in log', file=sys.stderr)
-    
+        if all(k in log for k in ("tar_files", "next_tar_index", "files", "file_prefix")):
+            logger.info('All required keys present in log')
+
     except KeyError as e:
         sys.exit('ERROR: Invalid log file. Log does not have "%s" key' % (e))
 
@@ -351,7 +367,7 @@ def get_files_to_upload(log, args):
     files should be synced. Exclude files which match patterns to exclude.
     If include_patterns is specified, include only files which match."""
 
-    print("\n--- Getting files to upload in %s ..." % args.sync_dir, file=sys.stderr)
+    logger.info("Getting files to upload in directory %s" % args.sync_dir)
 
     cur_time = int(time.time())
     to_upload = []
@@ -382,7 +398,7 @@ def full_path_matches_pattern(full_path, patterns_list):
 def split_into_tar_files(files_to_upload, log, args):
     """Split list so tar files uploaded are not greater than max_tar_size"""
 
-    print("\n--- Splitting into tar files to upload...", file=sys.stderr)
+    logger.info("Splitting into tar files to upload ...")
 
     tars_to_upload = []
     current_tar = {"size": 0, "files": []}
@@ -398,42 +414,43 @@ def split_into_tar_files(files_to_upload, log, args):
     tars_to_upload.append(current_tar)
 
     if total_size < args.min_tar_size:
-        print('QUITTING: Size of files to upload is not big ' +
+        logger.warning('QUITTING: Size of files to upload is not big ' +
                 'enough to to be uploaded yet. Please run again later or ' +
-                'specify --min-tar-size to be smaller', file=sys.stderr)
+                'specify --min-tar-size to be smaller. Details of Tars to Upload %s' % tars_to_upload)
         return []
 
-    print(f"--- {len(tars_to_upload)} tar files, {total_size/1024/1024/1024:.2f} GB", file=sys.stderr)
+    logger.info(f"Splitted into {len(tars_to_upload)} tar files with total size {total_size/1024/1024/1024:.2f} GB")
 
     return tars_to_upload
 
-def create_tar_file(files_to_upload, log, args):
+def create_tar_file(tar_object: dict = {"size": 0, "files": []}, log: dict = {}, args = None) -> dict:
     """Create a tar file containing the given files to be uploaded."""
 
-    if len(files_to_upload["files"]) == 0:
-        print("\n--- No files to upload, skipping tar file creation...", file=sys.stderr)
+    if len(tar_object["files"]) == 0:
+        logger.info("No files to upload, skipping tar file creation ...")
         return log
 
     tar_filename = "%s_%03d.tar" % (log['file_prefix'], log['next_tar_index'])
     tar_full_path = os.path.join(args.tar_directory, tar_filename)
 
-    print("\n--- Creating tar file %s..." % tar_full_path, file=sys.stderr)
+    logger.info("Creating tar file %s ..." % tar_full_path)
 
     tar_start = time.time()
     tar_file = tarfile.open(tar_full_path, 'w')
 
     log_updates = {}
-
-    for f_abs in files_to_upload["files"]:
+    for f_abs in tar_object["files"]:
         f_rel = os.path.relpath(f_abs, args.sync_dir)
         tar_file.add(f_abs, arcname=f_rel, recursive=False)
         log_updates[f_abs] = {'mtime': os.path.getmtime(f_abs)}
+        logger.debug(" "*4 + f"Added File to tar: {f_abs}")
+    logger.info("Completed Tar File Creation")
 
     tar_file.close()
     tar_end = time.time()
 
     log['tar_files'][tar_full_path] = {'status': 'tarred',
-                                       'size': files_to_upload["size"],
+                                       'size': tar_object["size"],
                                        'timestamps': {'tar_start': tar_start,
                                                       'tar_end': tar_end}
                                       }
@@ -445,15 +462,14 @@ def create_tar_file(files_to_upload, log, args):
 def upload_tar_files(log, args):
     """Uploads any tar files that haven't yet been uploaded"""
 
-    print("\n--- Uploading tar files...", file=sys.stderr)
+    logger.info("Uploading tar files ...")
 
     tar_destination_project, tar_destination_folder, _ = dxpy.utils.resolver.resolve_path(args.tar_destination, expected='folder')
 
     upload_count = 0
     for tar_file in log['tar_files']:
         if log['tar_files'][tar_file]['status'] == 'tarred':
-            print("Uploading %s to %s:%s..." % (tar_file, tar_destination_project,
-                                                                 tar_destination_folder), file=sys.stderr)
+            logger.info("Uploading Tar File %s to %s:%s..." % (tar_file, tar_destination_project, tar_destination_folder))
             upload_count += 1
             upload_start = time.time()
             if args.dxpy_upload:
@@ -470,7 +486,7 @@ def upload_tar_files(log, args):
                     opts += '--progress '
 
                 ua_command = "ua --project %s --folder %s --do-not-compress --wait-on-close %s %s --auth-token %s --chunk-size 25M" % (tar_destination_project, tar_destination_folder, opts, tar_file, args.auth_token)
-                print(ua_command, file=sys.stderr)
+                logger.info(f"UA Command -> {ua_command}")
                 try:
                     ua_process = subprocess.run(ua_command, shell=True, check=True, stdout=subprocess.PIPE, universal_newlines=True)
                     dx_file_id = ua_process.stdout.strip()
@@ -478,24 +494,27 @@ def upload_tar_files(log, args):
                     sys.exit("ERROR: Tar file %s was not uploaded. Please check log for progress and rerun script" % tar_file)
             upload_end = time.time()
 
+            logger.info("Complete Tar File Upload\n---From\n(%s)\nTo\n(%s:%s)\n---" % (tar_file, tar_destination_project, tar_destination_folder))
+
             log['tar_files'][tar_file]['status'] = 'uploaded'
             log['tar_files'][tar_file]['file_id'] = dx_file_id
             log['tar_files'][tar_file]['timestamps']['upload_start'] = upload_start
             log['tar_files'][tar_file]['timestamps']['upload_end'] = upload_end
             log = update_log(log, args)
     if upload_count == 0:
-        print("\tNo files uploaded...", file=sys.stderr)
+        logger.info("(!) No files uploaded...")
+
     return log
 
 def remove_tar_files(log, args):
     """Removes tar files that have been uploaded from the local disk."""
 
-    print("\n--- Removing uploaded tar files...", file=sys.stderr)
+    logger.info("Removing uploaded tar files...")
 
     remove_count = 0
     for tar_file in log['tar_files']:
         if log['tar_files'][tar_file]['status'] == 'uploaded':
-            print("Removing %s..." % tar_file, file=sys.stderr)
+            logger.info("Removing %s..." % tar_file)
 
             remove_count += 1
             remove_start = time.time()
@@ -508,7 +527,7 @@ def remove_tar_files(log, args):
             log = update_log(log, args)
 
     if remove_count == 0:
-        print("\tNo files removed...", file=sys.stderr)
+        logger.info("\tNo files removed...")
 
     return log
 
@@ -522,10 +541,10 @@ def print_all_file_ids(log):
         if log['tar_files'][tar_file]['status'] == 'removed':
             file_ids.append(log['tar_files'][tar_file]['file_id'])
         elif log['tar_files'][tar_file]['status'] == 'uploaded':
-            print('WARNING: %s was uploaded but not removed' % tar_file, file=sys.stderr)
+            logger.warning('%s was uploaded but not removed' % tar_file)
             file_ids.append(log['tar_files'][tar_file]['file_id'])
         else:
-            print('ERROR: %s was not uploaded' % tar_file, file=sys.stderr)
+            logger.error('%s was not uploaded' % tar_file)
             failed_uploads += 1
 
     assert failed_uploads >= 0
@@ -541,7 +560,7 @@ def print_all_file_ids(log):
 def write_log(log, log_file):
     """Writes the log to the log file."""
 
-    print('\n--- Writing log file...', file=sys.stderr)
+    logger.info('Writing log file...')
 
     with open(log_file, 'w') as logf:
         json.dump(log, logf)
@@ -554,32 +573,58 @@ def update_log(log, args):
 
 def main():
     """Main function."""
-
+    logger.info("-"*10 + "START" + "-"*10)
     args = parse_args()
-
-    print('\nUser Input:\n%s\n' % args, file=sys.stderr)
+    logger.debug(f"User Input\n---> {args}\n")
 
     args = check_inputs(args)
-
     log = read_log(args)
-
     check_log(log, args)
 
     files_to_upload = get_files_to_upload(log, args)
+    for fp in files_to_upload:
+        logger.debug("Files To Upload %s" % fp)
 
     tars_to_upload = split_into_tar_files(files_to_upload, log, args)
-
-    for tar in tars_to_upload:
-        log = create_tar_file(tar, log, args)
-        log = upload_tar_files(log, args)
-        log = remove_tar_files(log, args)
 
     # Run through upload & remove in case last invocation was interrupted
     if len(tars_to_upload) == 0:
         log = upload_tar_files(log, args)
         log = remove_tar_files(log, args)
 
+    initial_time = time.time()
+    for i, tar in enumerate(tars_to_upload, start=1):
+        logger.info(f"Start Upload Iteration {i}")
+        start_time = time.time()
+        time_elapsed = start_time - initial_time
+        logger.info(f"Total Time elapsed {humanfriendly.format_timespan(start_time - initial_time)}")
+        # Log out previous un-uploaded tar files if any
+        previous_unuploaded_tar_objs = list(filter(lambda x: x["status"] == "tarred", [v for k, v in log['tar_files'].items()]))
+        if len(previous_unuploaded_tar_objs) != 0:
+            logger.info("Previous Tar Files to be uploaded along with this iteration")
+            for tar_fp, tar_fp_value in log['tar_files'].items():
+                if tar_fp_value['status'] == 'tarred':
+                    logger.info(
+                        f"(size={tar_fp_value['size']})(tar_start={tar_fp_value['timestamps']['tar_start']})(tar_end={tar_fp_value['timestamp']['tar_end']}) {tar_fp}")
+                logger.debug("-"*20)
+        log = create_tar_file(tar_object=tar, log=log, args=args)
+        log = upload_tar_files(log, args)
+        log = remove_tar_files(log, args)
+        end_time = time.time()
+        duration = end_time - start_time
+        logger.info(f"(Upload Iteration {i}) It took {humanfriendly.format_timespan(duration)} secs to upload")
+        #
+        # Getting threshold limit from env if any
+        # The env is decided by the variable `sync_duration_threshold` from the playbook file
+        threshold = int(os.environ.get("SYNC_DURATION_THRESHOLD", 3600))
+        if args.hourly_restart and ((end_time + duration) // threshold > end_time // threshold):
+            logger.warning("It took too long to upload tar file(s) and time is up")
+            logger.info("Stop uploading and Let the subsequent invocations pick up the other tar files")
+            sys.exit(9)
+
     print_all_file_ids(log)
+    logger.info("-"*10 + "END" + "-"*10)
+
 
 if __name__ == '__main__':
     main()
