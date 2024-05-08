@@ -268,6 +268,8 @@ def parse_args():
                            '\n')
 
     parser.add_argument('sync_dir', metavar='<directory>', help='Directory to sync.')
+    parser.add_argument("-Z", "--hourly-restart", dest="hourly_restart", action='store_true',
+            help="Only upload for 1 hour, then exit and restart.")
 
     args = parser.parse_args()
     return args
@@ -615,7 +617,8 @@ def main():
         # Getting threshold limit from env if any
         # The env is decided by the variable `sync_duration_threshold` from the playbook file
         threshold = int(os.environ.get("SYNC_DURATION_THRESHOLD", 3600))
-        if (end_time + duration) // threshold > end_time // threshold:
+
+        if args.hourly_restart and ((end_time + duration) // threshold > end_time // threshold):
             logger.warning("It took too long to upload tar file(s) and time is up")
             logger.info("Stop uploading and Let the subsequent invocations pick up the other tar files")
             sys.exit(9)
