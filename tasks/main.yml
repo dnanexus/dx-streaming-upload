@@ -1,4 +1,5 @@
 ---
+
 # Install Dx-toolkit
 - name: Get DX toolkit
   pip:
@@ -201,6 +202,14 @@
   become_user: "{{ item.username }}"
   when: item.delay_sample_sheet_upload is defined
 
+- name: Change specification for Minimum age (in seconds) of files to be tarred and uploaded.
+  lineinfile: "dest=~/dnanexus/config/monitor_runs.config regexp='^min_age:.*' line='min_age: {{ item.min_age }}'"
+  with_items: "{{ monitored_users }}"
+  become: yes
+  become_user: "{{ item.username }}"
+  when: item.min_age is defined
+
+
 # Create lock file
 - name: Create lock file for CRON to wait on using flock
   file: path=/var/lock/dnanexus_uploader.lock state=touch
@@ -225,7 +234,7 @@
   cron: >
     name="DNAnexus monitor runs (debug) {{ item.1 }}"
     user="{{ item.0.username }}"
-    job="flock -w 5 /var/lock/dnanexus_uploader_{{ item.1 | regex_replace('\\/$', '') | basename  }}.lock bash -ex -c 'PATH=/opt/dnanexus-upload-agent:$PATH; python3 /opt/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ item.1 }} {{ \'-A\' if \'applet\' in item.0 else \'\' }} {{ item.0.applet if \'applet\' in item.0 else \'\'}} {{ \'-w\' if \'workflow\' in item.0 else \'\' }} {{ item.0.workflow if \'workflow\' in item.0 else \'\'}} {{ \'-s\' if \'script\' in item.0 else \'\' }} {{ item.0.script if \'script\' in item.0 else \'\'}} -v {{ \'>>\' if append_log | default(false) else \'>\' }} {{ cron_log_folder | default(\'~\') }}/monitor_{{ item.1 | regex_replace('\\/$', '') | basename }}.log 2>&1' {{ \'>>\' if append_log | default(false) else \'>\'}} {{ cron_log_folder | default(\'~\') }}/dx-stream_cron_{{ item.1 | regex_replace('\\/$', '') | basename }}.log 2>&1"
+    job="flock -w 5 /var/lock/dnanexus_uploader_{{ item.1 | regex_replace('\\/$', '') | basename  }}.lock bash -ex -c 'export SYNC_DURATION_THRESHOLD=60; PATH=/opt/dnanexus-upload-agent:$PATH; python3 /opt/dnanexus/scripts/monitor_runs.py -c ~/dnanexus/config/monitor_runs.config -p {{ upload_project }} -d {{ item.1 }} {{ \'-A\' if \'applet\' in item.0 else \'\' }} {{ item.0.applet if \'applet\' in item.0 else \'\'}} {{ \'-w\' if \'workflow\' in item.0 else \'\' }} {{ item.0.workflow if \'workflow\' in item.0 else \'\'}} {{ \'-s\' if \'script\' in item.0 else \'\' }} {{ item.0.script if \'script\' in item.0 else \'\'}} -v {{ \'>>\' if append_log | default(false) else \'>\' }} {{ cron_log_folder | default(\'~\') }}/monitor_{{ item.1 | regex_replace('\\/$', '') | basename }}.log 2>&1' {{ \'>>\' if append_log | default(false) else \'>\'}} {{ cron_log_folder | default(\'~\') }}/dx-stream_cron_{{ item.1 | regex_replace('\\/$', '') | basename }}.log 2>&1"
   with_subelements:
         - "{{ monitored_users }}"
         - monitored_directories
