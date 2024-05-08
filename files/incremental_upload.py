@@ -349,7 +349,6 @@ def was_completed_run_uploaded(lane: dict, args: any) -> bool:
     if os.path.exists(lane["log_path"]):
         with open(lane["log_path"], "r+") as f:
             log = json.load(f)
-        if termination_file_exists(args.novaseq, args.run_dir):
             return log.get("was_completed_run_uploaded", False)
     return False
 

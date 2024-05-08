@@ -26,11 +26,6 @@ COPY .build-context ./dx-streaming-upload
 # Create file for run-folder-a/180733_inprogress_novaseq
 RUN dd if=/dev/zero of=/opt/dx-streaming-upload/tests/run-folder-a/180731_complete_novaseq/output1.dat bs=12MB count=1
 RUN dd if=/dev/zero of=/opt/dx-streaming-upload/tests/run-folder-a/180731_complete_novaseq/output2.dat bs=12MB count=1
-RUN dd if=/dev/zero of=/opt/dx-streaming-upload/tests/run-folder-a/180731_complete_novaseq/output3.dat bs=8MB count=1
-RUN dd if=/dev/zero of=/opt/dx-streaming-upload/tests/run-folder-a/180731_complete_novaseq/output4.dat bs=6MB count=1
-RUN dd if=/dev/zero of=/opt/dx-streaming-upload/tests/run-folder-a/180731_complete_novaseq/output5.dat bs=14MB count=1
-RUN dd if=/dev/zero of=/opt/dx-streaming-upload/tests/run-folder-a/180731_complete_novaseq/output6.dat bs=15MB count=1
-RUN dd if=/dev/zero of=/opt/dx-streaming-upload/tests/run-folder-a/180731_complete_novaseq/output7.dat bs=16MB count=1
 # Create file for run-folder-a/180734_inprogress_novaseq
 RUN dd if=/dev/zero of=/opt/dx-streaming-upload/tests/run-folder-a/180733_complete_novaseq/output1.dat bs=12MB count=1
 RUN dd if=/dev/zero of=/opt/dx-streaming-upload/tests/run-folder-a/180733_complete_novaseq/output2.dat bs=12MB count=1
