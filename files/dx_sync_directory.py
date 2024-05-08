@@ -617,6 +617,7 @@ def main():
         # Getting threshold limit from env if any
         # The env is decided by the variable `sync_duration_threshold` from the playbook file
         threshold = int(os.environ.get("SYNC_DURATION_THRESHOLD", 3600))
+
         if args.hourly_restart and ((end_time + duration) // threshold > end_time // threshold):
             logger.warning("It took too long to upload tar file(s) and time is up")
             logger.info("Stop uploading and Let the subsequent invocations pick up the other tar files")

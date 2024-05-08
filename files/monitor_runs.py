@@ -11,6 +11,8 @@ import sys
 import time
 import yaml
 import logging
+import shutil
+
 
 src_dir = os.path.join(os.path.dirname(__file__), ".")
 sys.path.append(src_dir)
@@ -88,6 +90,21 @@ def parse_args():
     requiredNamed.add_argument('--config', '-c',
                         help='Path to config YAML file',
                         type=argparse.FileType('r'),
+                        required=True)
+
+    requiredNamed.add_argument('--log-folder', 
+                        help='Path to the log folder',
+                        type=str,
+                        required=True)
+
+    requiredNamed.add_argument('--log-name', 
+                        help='Name of the monitor run log file',
+                        type=str,
+                        required=True)
+
+    requiredNamed.add_argument('--log-dsu-name', 
+                        help='Name of the dsu run log file',
+                        type=str,
                         required=True)
 
     requiredNamed.add_argument('--project', '-p',
@@ -456,6 +473,32 @@ def trigger_streaming_upload(folders, config):
     # Wait for all incremental upload threads
     pool.join()
 
+def sync_log(args, attempts=3, delay_time=0.1):
+    """
+    Copy the log file into the remote log folder 
+    """
+    if args.log_folder == "~":
+        return
+    for i in range(attempts):
+        try:
+            shutil.copy(os.path.join(os.environ["HOME"], args.log_name), 
+                    os.path.join(args.log_folder, args.log_name))
+            shutil.copy(os.path.join(os.environ["HOME"], args.log_dsu_name), 
+                    os.path.join(args.log_folder, args.log_dsu_name))
+            break
+        except Exception as err:
+            logger.warning(f"{i + 1} attempt failed when trying to persist the log file to remote folder {args.log_folder} due to error: {err}")
+            time.sleep(delay_time)
+            if i == (attempts - 1):
+                logger.warning(f"Failed to persist the log file to the remote folder {args.log_folder} after {attempts} attempts")
+                # Backup the log file to not be overwriten in the next cron  
+                backed_up_log = os.path.join(os.environ["HOME"], f"{args.log_name}_{int(time.time())}")
+                backed_up_dsu_log = os.path.join(os.environ["HOME"], f"{args.log_dsu_name}_{int(time.time())}")
+                shutil.copy(os.path.join(os.environ["HOME"], args.log_name), backed_up_log)
+                shutil.copy(os.path.join(os.environ["HOME"], args.log_dsu_name), backed_up_dsu_log)
+                logger.warning(f"Backed up the log file at {backed_up_log}")
+                logger.warning(f"Backed up the dx-stream-cron log file at {backed_up_dsu_log}")
+                
 def main():
     """ Main entry point """
     logger.info("-"*10 + "START" + "-"*10)
@@ -524,5 +567,6 @@ def main():
     trigger_streaming_upload(folders_to_sync, streaming_config)
     logger.info("-"*10 + "END" + "-"*10)
 
+    sync_log(args)
 if __name__ == "__main__":
     main()
