@@ -503,6 +503,7 @@ def main():
     """ Main entry point """
     logger.info("-"*10 + "START" + "-"*10)
     args = parse_args()
+    if DEBUG: logger.debug("Version: v0.4.0beta")
     if DEBUG: logger.debug("Starting monitor_runs at %s" % time.time())
     if DEBUG: logger.debug("Got args %s" % args)
 
