@@ -1,0 +1,38 @@
+
+## Setup dockerized dx streaming upload tool to start automatically at boot ##
+
+Reference:
+https://docs.docker.com/config/containers/start-containers-automatically/
+https://docs.docker.com/engine/install/linux-postinstall/
+
+After the dockerized dx streaming upload tool is up and running, 
+use the following steps to launch it whenever the host boots up.
+
+This only needs to set up once.
+
+Requirements:
+- linux with working systemd
+- working dx streaming upload tool installed under /opt/
+- the ansible recipie file located at /opt/dx-upload-play.yml
+
+On the host:
+1. set the docker service to autostart at boot:
+
+(CentOS as host example)
+sudo systemctl enable docker.service
+sudo systemctl enable containerd.service
+
+2. commit the docker container into a new docker image
+docker commit <container ID> <repo>:<tag>
+
+3. start a new container based on the new docker image
+Example (you may need to add some volume binding options):
+docker run -it --restart always <repo>:<tag>
+
+Inside the docker container, run the restart script as root:
+/opt/dnanexus/scripts/streaming-restart.sh
+
+Then use Ctrl+p and Ctrl+q to detach the terminal while 
+keeping the container running
+
+NOTE: Contact support@dnanexus.com for questions you may have
