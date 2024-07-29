@@ -481,10 +481,11 @@ def sync_log(args, attempts=3, delay_time=0.1):
         return
     for i in range(attempts):
         try:
+            # copy over files and add timestamp to filename for remote location
             shutil.copy(os.path.join(os.environ["HOME"], args.log_name), 
-                    os.path.join(args.log_folder, args.log_name))
+                    os.path.join(args.log_folder, f"{args.log_name}_{int(time.time())}"))
             shutil.copy(os.path.join(os.environ["HOME"], args.log_dsu_name), 
-                    os.path.join(args.log_folder, args.log_dsu_name))
+                    os.path.join(args.log_folder, f"{args.log_dsu_name}_{int(time.time())}"))
             break
         except Exception as err:
             logger.warning(f"{i + 1} attempt failed when trying to persist the log file to remote folder {args.log_folder} due to error: {err}")
