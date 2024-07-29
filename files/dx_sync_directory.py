@@ -443,7 +443,8 @@ def create_tar_file(tar_object: dict = {"size": 0, "files": []}, log: dict = {},
         f_rel = os.path.relpath(f_abs, args.sync_dir)
         tar_file.add(f_abs, arcname=f_rel, recursive=False)
         log_updates[f_abs] = {'mtime': os.path.getmtime(f_abs)}
-        logger.debug(" "*4 + f"Added File to tar: {f_abs}")
+        # removed because logging too many files.
+        #logger.debug(" "*4 + f"Added File to tar: {f_abs}")
     logger.info("Completed Tar File Creation")
 
     tar_file.close()
@@ -582,8 +583,9 @@ def main():
     check_log(log, args)
 
     files_to_upload = get_files_to_upload(log, args)
-    for fp in files_to_upload:
-        logger.debug("Files To Upload %s" % fp)
+    # TODO: commented out because it is logging too many files
+    #for fp in files_to_upload:
+    #    logger.debug("Files To Upload %s" % fp)
 
     tars_to_upload = split_into_tar_files(files_to_upload, log, args)
 
