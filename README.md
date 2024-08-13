@@ -7,6 +7,8 @@ The dx-streaming-upload Ansible role packages the streaming upload module for in
 
 Instruments that this module support include the Illumina MiSeq, NextSeq, HiSeq-2500, HiSeq-4000, HiSeq-X, Novaseq.
 
+The dx-streaming-upload tool is experimental and not yet productized. Use it at your own risk.
+
 Role Variables
 --------------
 - `mode`: `{deploy, debug}` In the *debug* mode, monitoring cron job is triggered every minute; in *deploy mode*, monitoring cron job is triggered every hour.
