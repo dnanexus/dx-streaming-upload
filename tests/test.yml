@@ -11,9 +11,22 @@
         n_retries: 5
       - username: root
         monitored_directories:
-          - ~/home/root/runs
-    mode: debug
+          - ~/dx-streaming-upload/tests/run-folder-a
+          - ~/dx-streaming-upload/tests/run-folder-b
+        n_seq_intervals: 2
+        n_retries: 5
+        min_size: 9
+        max_size: 10
+        min_interval: 60
+#        ua_progress: False
+#        verbose: False
+        exclude_patterns: Alignment_1
+#        novaseq: True
+    mode: deploy
     upload_project: project-BpyQyjj0Y7V0Gbg7g52Pqf8q
+#    append_log: true
+#    hourly_restart: true
+#    cron_log_folder: ~/foobar
 
   roles:
     - dx-streaming-upload

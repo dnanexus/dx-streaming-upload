@@ -14,9 +14,12 @@ Role Variables
 - `mode`: `{deploy, debug}` In the *debug* mode, monitoring cron job is triggered every minute; in *deploy mode*, monitoring cron job is triggered every hour.
 - `upload_project`: ID of the DNAnexus project that the RUN folders should be uploaded to. The ID is of the form `project-BpyQyjj0Y7V0Gbg7g52Pqf8q`
 - `dx_token`: API token for the DNAnexus user to be used for data upload. The API token should give minimally UPLOAD access to the `{{ upload project }}`, or CONTRIBUTE access if `downstream_applet` is specified. Instructions for generating a API token can be found on the DNAnexus documentation [Authentication Tokens](https://documentation.dnanexus.com/user/login-and-logout#generating-an-authentication-token) page. This value is overriden by `dx_user_token` in `monitored_users`.
+- `append_log`: boolean to configure appending or truncating monitor.log and dx-stream_cron.log.  If true, please make sure you have a periodic clean up script, otherwise these files may grow too large.  Default is false
+- `cron_log_folder`: folder name to copy completed monitor.log and dx-stream_cron.log files; in-process monitor.log and dx-stream_cron.log will be located in the home directory.
+- `hourly_restart` : trigger before the hour exit, so the next cron job will start, thus picking up new run folders.  Default is false
 - `monitored_users`: This is a list of objects, each representing a remote user, with its set of incremental upload parameters. For each `monitored_user`, the following values are accepted
   - `username`: (Required) username of the remote user
-  - `monitored_directories`: (Required)  Path to the local directory that should be monitored for RUN folders. Multiple directories can be listed. Suppose that the folder `20160101_M000001_0001_000000000-ABCDE` is the RUN directory, then the folder structure assumed is `{{monitored_dir}}/20160101_M000001_0001_000000000-ABCDE`
+  - `monitored_directories`: (Required)  Path to the local directory that should be monitored for RUN folders. Multiple directories can be listed. Suppose that the folder `20160101_M000001_0001_000000000-ABCDE` is the RUN directory, then the folder structure assumed is `{{monitored_dir}}/20160101_M000001_0001_000000000-ABCDE`.  Note: If multiple directories are specified, please ensure that the leaf most folder name is unique, as this is used to key the cron job name.
   - `local_tar_directory`: (Optional) Path to a local folder where tarballs of RUN directory is temporarily stored. User specified in `username` need to have **WRITE** access to this folder. There should be sufficient disk space to accomodate a RUN directory in this location. This overwrites the default found in `templates/monitor_run_config.template`.
   - `local_log_directory`: (Optional) Path to a local folder where logs of streaming upload is stored, persistently. User specified in `username` need to have **WRITE** access to this folder. User should not manually manipulate files found in this folder, as the streaming upload code make assumptions that the files in this folder are not manually manipulated. This overwites the default found in `templates/monitor_run_config.template`.
   - `exclude_patterns`: (Optional) A list of regex patterns to exclude.  If 1 or more regex patterns are given, the files matching the pattern will be skipped (not tarred nor uploaded). The pattern will be matched against the full file path.
@@ -27,6 +30,8 @@ Role Variables
   - `run_length`: (Optional) Expected duration of a sequencing run, corresponds to the -D paramter in incremental upload (For example, 24h). Acceptable suffix: s, m, h, d, w, M, y.
   - `n_seq_intervals`: (Optional) Number of intervals to wait for run to complete. If the sequencing run has not completed within `n_seq_intervals` * `run_length`, it will be deemed as aborted and the program will not attempt to upload it. Corresponds to the -I parameter in incremental upload.
   - `n_upload_threads`: (Optional) Number of upload threads used by Upload Agent. For sites with severe upload bandwidth limitations (<100kb/s), it is advised to reduce this to 1, to increase robustness of upload in face of possible network disruptions. Default=8.
+  - `ua_progress`: (Optional) --progress option for Upload Agent. Set to false to reduce log size.  Default=true.
+  - `verbose`: (Optional) --verbose option for Upload Agent. Set to false to reduce log size.  Default=true.
   - `script`: (Optional) File path to an executable script to be triggered after successful upload for the RUN directory. The script must be executable by the user specified by `username`. The script will be triggered in the with a single command line argument, correpsonding to the filepath of the RUN directory (see section *Example Script*). **If the file path to the script given does not point to a file, or if the file is not executable by the user, then the upload process will not commence.**
   - `dx_user_token`: (Optional) API token associated with the specific `monitored_user`. This overrides the value `dx_token`. If `dx_user_token` is not specified, defaults to `dx_token`.
   - `applet`: (Optional) ID of a DNAnexus applet to be triggered after successful upload of the RUN directory. This applet's I/O contract should accept a DNAnexus record with the  name `upload_sentinel_record` as input. This applet will be triggered with only the `upload_sentinel_record` input. Additional input can be specified using the variable `downstream_input`. **Note that if the specified applet is not located, the upload process will not commence. Mutually exclusive with `workflow`. The role will raise an error and fail if both are specified.**
@@ -72,14 +77,17 @@ Example Playbook
         downstream_input: '{"sequencing_center": "CENTER_A"}'
         min_size: 250
         max_size: 1000
-        novaseq: True
+        novaseq: true
       - username: root
         monitored_directories:
-          - ~/home/root/runs
+          - ~/seq1
+          - ~/seq2
         workflow: workflow-BvFz31j0Y7V5QPf09x9y91pF
         downstream_input: '{"0.sequencing_center: "CENTER_A"}'
     mode: debug
     upload_project: project-BpyQyjj0Y7V0Gbg7g52Pqf8q
+    append_log: true
+    cron_log_folder: ~/cron_logs
 
   roles:
     - dx-streaming-upload

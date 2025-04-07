@@ -10,6 +10,8 @@ import time
 import dxpy
 import argparse
 import json
+import logging
+import traceback
 
 # Uploads an Illumina run directory (HiSeq 2500, HiSeq X, NextSeq, NovaSeq)
 # If for use with a MiSeq, users MUST change the config files to include and NOT specify the -l argument
@@ -23,6 +25,19 @@ import json
 #
 # By "synchronize" we mean that each invocation of dx_sync_directory.py will create a TAR
 # archive of all files in the run directory modified since the last invocation.
+
+
+logger = logging.getLogger(__name__)
+handler = logging.StreamHandler(sys.stderr)
+formatter = logging.Formatter(
+    fmt="[proc:%(process)d][%(filename)s][%(asctime)s][%(levelname)s] %(message)s",
+    datefmt="%b %d %Y, %I:%M:%S %p (%Z)"
+)
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
+
+
 
 def parse_args():
     """Parse the command-line arguments and canonicalize file path arguments"""
@@ -97,15 +112,19 @@ def parse_args():
             help="An optional list of regex patterns to exclude.")
     parser.add_argument("-n", "--novaseq", dest="novaseq", action='store_true',
             help="If Novaseq is used, this parameter has to be used.")
+    parser.add_argument("-Z", "--hourly-restart", dest="hourly_restart", action='store_true',
+            help="Only upload for 1 hour, then exit and restart.")
 
-
-    # Mutually exclusive inputs for verbose loggin (UA) vs dxpy upload
-    upload_debug_group = parser.add_mutually_exclusive_group(required=False)
-    upload_debug_group.add_argument("--dxpy-upload", "-d", action="store_true",
+    # Mutually exclusive inputs for groups are not supported
+    parser.add_argument("--dxpy-upload", "-d", action="store_true",
             help="This flag allows you to specify to use dxpy instead of " +
             "upload agent")
-    upload_debug_group.add_argument("--verbose", "-v", action="store_true",
+    
+    ua_group = parser.add_argument_group('ua options')
+    ua_group.add_argument("--verbose", "-v", action="store_true",
         help="This flag allows you to specify upload agent --verbose mode.")
+    ua_group.add_argument("--ua-progress", action="store_true",
+        help="This flag allows you to specify upload agent --ua_progress mode.")
 
     # Mutually exclusive inputs for triggering applet / workflow after upload
     downstream_analysis_group = parser.add_mutually_exclusive_group(required=False)
@@ -178,7 +197,7 @@ def check_input(args):
             raise_error("Executable/script passed by -s: (%s) is not executable" %(args.script))
 
     if not args.dxpy_upload:
-        print_stderr("Checking if ua is in $PATH")
+        logger.debug("Checking if ua is in $PATH")
         try:
             sub.check_call(['ua', '--version'],
                     stdout=open(os.devnull, 'w'), close_fds=True)
@@ -203,10 +222,10 @@ def get_run_id(run_dir):
         tree = ET.parse(runinfo_xml)
         root = tree.getroot()
         for child in root:
-            run_id= child.attrib['Id']
-        print_stderr("Detected run %s" % (run_id))
+            run_id = child.attrib['Id']
+        logger.info("Detected run %s" % (run_id))
         return run_id
-    except:
+    except Exception as e:
         raise_error("Could not extract run id from RunInfo.xml")
 
 def get_target_folder(base, lane):
@@ -217,32 +236,35 @@ def get_target_folder(base, lane):
 
 def run_command_with_retry(my_num_retries, my_command):
     for trys in range(my_num_retries):
-        print_stderr("Running (Try %d of %d): %s" %
-                (trys, my_num_retries, my_command))
+        logger.info("Running (Try %d of %d): %s" % (trys, my_num_retries, my_command))
         try:
-            process = sub.run(my_command, check=True, stdout=sub.PIPE, universal_newlines=True)
+            process = sub.run(my_command, check=True, stdout=sub.PIPE, universal_newlines=True, env=os.environ.copy())
+
             output = process.stdout.strip()
+            logger.info(f"output of dx_sync_directory.py is {output}")
             return output
         except sub.CalledProcessError as e:
-            print_stderr("Failed to run `%s`, retrying (Try %s)" %
-                    (" ".join(my_command), trys))
+            if e.returncode == 9: # error code of dx_sync_directory when one iteration took too long (span to the next hour) to upload
+                logger.info(msg="Triggering restarts")
+                sys.exit()
+            logger.error("Failed to run `%s`, retrying (Try %s)" % (" ".join(my_command), trys))
+
         time.sleep(10)
 
     raise_error("Number of retries exceed %d. Please check logs to troubleshoot issues." % my_num_retries)
 
 def raise_error(msg):
-    print_stderr("ERROR: %s" % msg)
+    logger.error(msg)
     sys.exit()
+    logger.info("-"*10 + "END" + "-"*10)
 
-def print_stderr(msg):
-    print ("[incremental_upload.py] %s" % msg, file=sys.stderr)
 
 def upload_single_file(filepath, project, folder, properties):
     """ Upload a single file onto DNAnexus, into the project and folder specified,
     and apply the given properties. Returns None if given filepath is invalid or
     an error was thrown during upload"""
     if not os.path.exists(filepath):
-        print_stderr("Invalid filepath given to upload_single_file %s" %filepath)
+        logger.error("Invalid filepath given to upload_single_file %s" % filepath)
         return None
 
     try:
@@ -254,7 +276,7 @@ def upload_single_file(filepath, project, folder, properties):
         return f.id
 
     except dxpy.DXError as e:
-        print_stderr("Failed to upload local file %s to %s:%s" %(filepath, project, folder))
+        logger.error("Failed to upload local file %s to %s:%s" % (filepath, project, folder))
         return None
 
 def run_sync_dir(lane, args, finish=False):
@@ -292,9 +314,13 @@ def run_sync_dir(lane, args, finish=False):
     invocation.extend(["--max-tar-size", str(args.max_size)])
     invocation.extend(["--upload-threads", str(args.upload_threads)])
     invocation.extend(["--prefix", lane["prefix"]])
+    if args.hourly_restart:
+        invocation.extend(["-Z"])
     invocation.extend(["--auth-token", args.api_token])
     if args.verbose:
         invocation.append("--verbose")
+    if args.ua_progress:
+        invocation.append("--ua_progress")
     if args.dxpy_upload:
         invocation.append("--dxpy-upload")
     if finish:
@@ -312,11 +338,45 @@ def termination_file_exists(novaseq, run_dir):
     else:
         return os.path.isfile(os.path.join(run_dir, "CopyComplete.txt"))
 
+
+def was_completed_run_uploaded(lane: dict, args: any) -> bool:
+    """Whether the completed run (where termination file exists) had been uploaded before.
+
+    :param lane: Lane data
+    :type lane: dict
+    :param args: Arguments to the main script
+    :type args: any
+    :rtype: bool
+    """
+    if os.path.exists(lane["log_path"]):
+        with open(lane["log_path"], "r+") as f:
+            log = json.load(f)
+            return log.get("was_completed_run_uploaded", False)
+    return False
+
+def mark_completed_run_uploaded(lane: dict):
+    """Mark uploaded for the Completed Run.
+
+    This function updates the run log file at key `was_completed_run_uploaded` to `True` 
+
+    :param lane: Lane data
+    :type lane: dict
+    """
+    if not os.path.exists(lane["log_path"]):
+        raise_error("Could not mark <Completed Run> uploaded because log path %s does not exists" % lane["log_path"])
+    with open(lane["log_path"], "r+") as f:
+        log = json.load(f)
+    log["was_completed_run_uploaded"] = True
+    with open(lane["log_path"], "w") as f:
+        json.dump(log, f, indent=4)
+
 def main():
+    logger.info("-"*10 + "START" + "-"*10)
 
     args = parse_args()
     check_input(args)
     run_id = get_run_id(args.run_dir)
+    threshold = int(os.environ.get("SYNC_DURATION_THRESHOLD", 3600))
 
     # Set all naming conventions
     REMOTE_RUN_FOLDER = "/" + run_id + "/runs"
@@ -349,6 +409,9 @@ def main():
     # Create upload sentinel for upload, if record already exists, use that
     done_count = 0
     for lane in lane_info:
+        if was_completed_run_uploaded(lane=lane, args=args):
+            continue
+
         lane_num = lane["lane"]
         try:
             old_record = dxpy.find_one_data_object(zero_ok=True,
@@ -365,8 +428,7 @@ def main():
                     project=old_record["project"]
                     )
             if lane["dxrecord"].describe()["state"] == "closed":
-                print_stderr("Run %s, lane %s has already been uploaded" %
-                        (run_id, lane_num))
+                logger.info("Run %s, lane %s has already been uploaded" % (run_id, lane_num))
                 lane["uploaded"] = True
                 done_count += 1
         else:
@@ -395,20 +457,21 @@ def main():
                 lane["samplesheet_file_id"] = sampleSheet["id"]
 
     if done_count == len(lane_info):
-        print_stderr("EXITING: All lanes already uploaded")
+        logger.error("EXITING: All lanes already uploaded")
         sys.exit(1)
 
     seconds_to_wait = (dxpy.utils.normalize_timedelta(args.run_duration) / 1000 * args.intervals_to_wait)
-    print_stderr("Maximum allowable time for run to complete: %d seconds." %seconds_to_wait)
+    logger.debug("Maximum allowable time for run to complete: %d seconds." % seconds_to_wait)
 
     initial_start_time = time.time()
+    loop = 1
     # While loop waiting for RTAComplete.txt or RTAComplete.xml, or CopyComplete.txt, in case of a NovaSeq run
     while not termination_file_exists(args.novaseq, args.run_dir):
-        start_time=time.time()
+        start_time = time.time()
         run_time = start_time - initial_start_time
         # Fail if run time exceeds total time to wait
         if run_time > seconds_to_wait:
-            print_stderr("EXITING: Upload failed. Run did not complete after %d seconds (max wait = %ds)" %(run_time, seconds_to_wait))
+            logger.info("EXITING: Upload failed. Run did not complete after %d seconds (max wait = %ds)" %(run_time, seconds_to_wait))
             sys.exit(1)
 
         # Loop through all lanes in run directory
@@ -418,15 +481,24 @@ def main():
                continue
             run_sync_dir(lane, args)
 
-        # Wait at least the minimum time interval before running the loop again
         cur_time = time.time()
         diff = cur_time - start_time
+
+        # if the next upload is going to be 1 hour after the initial start, then terminate and let the cron job pick it up
+        if args.hourly_restart and ((cur_time + args.sync_interval) // threshold > cur_time // threshold):
+            logger.info("EXITING: Next run interval will be hourly cron initiated")
+            sys.exit()
+
+        # Wait at least the minimum time interval before running the loop again.  If the previous loop
+        # ran longer than the sync_interval, then run loop immediately
         if diff < args.sync_interval:
-            print_stderr("Sleeping for %d seconds" % (int(args.sync_interval - diff)))
+            logger.debug("Sleeping for %d seconds" % (int(args.sync_interval - diff)))
             time.sleep(int(args.sync_interval - diff))
 
     # Final synchronization, upload data, set details
     for lane in lane_info:
+        if was_completed_run_uploaded(lane=lane, args=args):
+            continue
         if lane["uploaded"]:
             continue
         file_ids = run_sync_dir(lane, args, finish=True)
@@ -476,10 +548,10 @@ def main():
             details.update({'samplesheet_file_id': lane["samplesheet_file_id"]})
 
         record.set_details(details)
-
         record.close()
+        mark_completed_run_uploaded(lane)
 
-    print_stderr("Run %s successfully streamed!" % (run_id))
+    logger.info("Run %s successfully streamed!" % (run_id))
 
     downstream_input = {}
     if args.downstream_input:
@@ -501,7 +573,7 @@ def main():
         # project verified in check_input, assuming no change
         project = dxpy.get_handler(args.project)
 
-        print_stderr("Initiating downstream analysis: given app(let) id %s" %args.applet)
+        logger.info("Initiating downstream analysis: given app(let) id %s" %args.applet)
 
         for info in lane_info:
             lane = info["lane"]
@@ -512,7 +584,7 @@ def main():
 
             # Prepare output folder, if downstream analysis specified
             reads_target_folder = get_target_folder(REMOTE_READS_FOLDER, lane)
-            print_stderr("Creating output folder %s" %(reads_target_folder))
+            logger.debug("Creating output folder %s" %(reads_target_folder))
 
             try:
                 project.new_folder(reads_target_folder, parents=True)
@@ -531,7 +603,7 @@ def main():
                         project=args.project,
                         name=job_name)
 
-            print_stderr("Initiated job %s from applet %s for lane %s" %(job, args.applet, lane))
+            logger.info("Initiated job %s from applet %s for lane %s" %(job, args.applet, lane))
     # Close if args.applet
 
     # args.workflow and args.applet are mutually exclusive
@@ -539,7 +611,7 @@ def main():
         # project verified in check_input, assuming no change
         project = dxpy.get_handler(args.project)
 
-        print_stderr("Initiating downstream analysis: given workflow id %s" %args.workflow)
+        logger.info("Initiating downstream analysis: given workflow id %s" %args.workflow)
 
         for info in lane_info:
             lane = info["lane"]
@@ -550,7 +622,7 @@ def main():
 
             # Prepare output folder, if downstream analysis specified
             analyses_target_folder = get_target_folder(REMOTE_ANALYSIS_FOLDER, lane)
-            print_stderr("Creating output folder %s" %(analyses_target_folder))
+            logger.debug("Creating output folder %s" %(analyses_target_folder))
 
             try:
                 project.new_folder(analyses_target_folder, parents=True)
@@ -569,7 +641,7 @@ def main():
                         project=args.project,
                         name=job_name)
 
-            print_stderr("Initiated analyses %s from workflow %s for lane %s" %(job, args.workflow, lane))
+            logger.info("Initiated analyses %s from workflow %s for lane %s" %(job, args.workflow, lane))
 
     # Close if args.workflow
 
@@ -580,6 +652,7 @@ def main():
         except sub.CalledProcessError as e:
             raise_error("Executable (%s) failed with error %d: %s" %(args.script, e.returncode, e.output))
 
+    logger.info("-"*10 + "END" + "-"*10)
 
 if __name__ == "__main__":
     main()

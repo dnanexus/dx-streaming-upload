@@ -10,10 +10,26 @@ import subprocess as sub
 import sys
 import time
 import yaml
+import logging
+import shutil
+
 
 src_dir = os.path.join(os.path.dirname(__file__), ".")
 sys.path.append(src_dir)
+
 from incremental_upload import termination_file_exists
+
+
+logger = logging.getLogger(__name__)
+handler = logging.StreamHandler(sys.stderr)
+formatter = logging.Formatter(
+    fmt="[proc:%(process)d][%(filename)s][%(asctime)s][%(levelname)s] %(message)s",
+    datefmt="%b %d %Y, %I:%M:%S %p (%Z)"
+)
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
+
 
 # Whether to print verbose Debuggin messages
 DEBUG = False
@@ -40,7 +56,10 @@ CONFIG_DEFAULT = {
     "downstream_input": '',
     "n_streaming_threads":1,
     "delay_sample_sheet_upload": False,
-    "novaseq": False
+    "novaseq": False,
+    "hourly_restart": False,
+    "ua_progress": True,
+    "verbose": True
 }
 
 # Base folder in which the RUN folders are deposited
@@ -71,6 +90,21 @@ def parse_args():
     requiredNamed.add_argument('--config', '-c',
                         help='Path to config YAML file',
                         type=argparse.FileType('r'),
+                        required=True)
+
+    requiredNamed.add_argument('--log-folder', 
+                        help='Path to the log folder',
+                        type=str,
+                        required=True)
+
+    requiredNamed.add_argument('--log-name', 
+                        help='Name of the monitor run log file',
+                        type=str,
+                        required=True)
+
+    requiredNamed.add_argument('--log-dsu-name', 
+                        help='Name of the dsu run log file',
+                        type=str,
                         required=True)
 
     requiredNamed.add_argument('--project', '-p',
@@ -148,14 +182,14 @@ def get_streaming_config(config_file, project, applet, workflow, script, token):
     return config
 
 def _transform_to_number(string):
-    if type(string) != str:
+    if not isinstance(string, str):
         return string
     try:
         res = int(string)
-    except:
+    except Exception as e:
         try:
             res = float(string)
-        except:
+        except Exception as e:
             res = string
     return res
 
@@ -236,7 +270,7 @@ def check_local_runs(base_dir, run_folders, run_length, n_intervals, novaseq=Fal
                 time_to_wait = dxpy.utils.normalize_timedelta(run_length) / 1000 * n_intervals
                 if (curr_time - created_time) > time_to_wait:
                     # Stale run
-                    if DEBUG: print("==DEBUG== run folder {0} was created on {1}; "\
+                    if DEBUG: logger.debug("run folder {0} was created on {1}; "\
                     "it is determined to be STALE and will NOT be uploaded.".format(run_folder,
                         time.strftime("%Z - %Y/%m/%d, %H:%M:%S", time.localtime(created_time))))
 
@@ -270,8 +304,8 @@ def check_dnax_folders(run_folders, project):
     # ie, incremental upload has never been triggered in this project
     # All RUN folders are considered to be unsynced
     except dxpy.exceptions.ResourceNotFound as e:
-        if DEBUG: print("==DEBUG== {0} not found in project {1}".format(RUN_UPLOAD_DEST, project))
-        if DEBUG: print("==DEBUG== Interpreting this as all local RUN folders are unsynced")
+        if DEBUG: logger.debug("{0} not found in project {1}".format(RUN_UPLOAD_DEST, project))
+        if DEBUG: logger.debug("Interpreting this as all local RUN folders are unsynced")
         return ([], run_folders)
 
     # Dict returned by list_folder did not contian a "folders" key
@@ -300,17 +334,20 @@ def local_upload_has_lapsed(folder, config):
     """ Determines whether an incomplete RUN directory sync has "lapsed", ie
     it has failed and need to be re-triggered. Local_upload_has_lapsed will return
     True if there has been no update to the local LOG file for N_INTERVALS_TO_WAIT *
-    config['min_interval']"""
+    config['min_interval']
+    Note: with the current flock mechanism on the cron job, this might not be necessary anymore,
+    so if this is called for a folder that has a valid local log file, then return True.
+    """
 
     local_log_files = glob.glob('{0}/*{1}*'.format(config['log_dir'], folder))
     if not local_log_files:
         # Could not find a local log file for the run-folder for which the upload has been initiated
         # The log file could have been moved or deleted. Treat this as an lapsed upload
         if DEBUG:
-            print("==INFO== Local log file could not be found for "\
+            logger.info("Local log file could not be found for "\
                     "{run} at {folder}""".format(run=folder,
                                              folder='{0}/{1}'.format(config['log_dir'], folder)))
-            print("==INFO== Treating run {0} as a lapsed local upload, "\
+            logger.info("Treating run {0} as a lapsed local upload, "\
                    "and will reinitiate streaming upload""".format(folder))
 
         return True
@@ -320,19 +357,23 @@ def local_upload_has_lapsed(folder, config):
         # log as the accurate one. NOTE: This script does not currently support upload by lane
         # so we do *NOT* anticipate multiple records per run folder
         if DEBUG:
-            print("==INFO== Found {n} log files for run {run} in folder {folder}."\
-                   "Using the latest log. The log files are {files}.".format(n=len(local_log_files),
-                                                                            run=folder,
-                                                                            folder='{0}/{1}'.format(config['log_dir'], folder),
-                                                                            files=local_log_files))
+            logger.info(
+                "Found {n} log files for run {run} in folder {folder}. Using the latest log. The log files are {files}.".format(
+                        n=len(local_log_files),
+                        run=folder,
+                        folder='{0}/{1}'.format(config['log_dir'], folder),
+                        files=local_log_files)
+            )
     # Get most recently modified file's mod time
     mod_time = max([os.path.getmtime(path) for path in local_log_files])
     elapsed_time = time.time() - mod_time
 
-    return ((elapsed_time / config['min_interval']) > N_INTERVALS_TO_WAIT)
+    # with flock in cron, this should not be a necessary check anymore
+    # return ((elapsed_time / config['min_interval']) > N_INTERVALS_TO_WAIT)
+    return True
 
-def check_complete_sync(synced_folders, config):
-    """ Check whether the RUN folder sync is complete by querying the state
+def check_incomplete_sync(synced_folders, config):
+    """ Check whether the RUN folder sync is incomplete by querying the state
     of the sentinel record (closed = complete, open = incomplete). Returns
     a list of incomplete syncs which have been deemed to be inactive, according
     to the local_upload_has_lapsed function"""
@@ -371,11 +412,19 @@ def _trigger_streaming_upload(folder, config):
                "-R", config['n_retries'],
                "-D", config['run_length'],
                "-I", config['n_seq_intervals'],
-               "-u", config['n_upload_threads'],
-               "--verbose"]
+               "-u", config['n_upload_threads']]
 
+    if config['verbose']:
+        command += ['--verbose']
+
+    if config['ua_progress']:
+        command += ['--ua-progress']
+        
     if config['novaseq']:
         command += ['-n']
+
+    if config['hourly_restart']:
+        command += ['-Z']
 
     if config['exclude'] != '':
         command += ["-x", config['exclude']]
@@ -394,16 +443,16 @@ def _trigger_streaming_upload(folder, config):
 
     if config.get("delay_sample_sheet_upload", False):
         command.append("-S")
+
     # Ensure all numerical values are formatted as string
     command = [str(word) for word in command]
 
-    print("==INFO== Triggering incremental upload command: {0}".format(
-        ' '.join(command)))
+    logger.info("Triggering incremental upload command: {0}".format(' '.join(command)))
     try:
-        inc_out = sub.run(command, check=True, stdout=sub.PIPE, universal_newlines=True).stdout
+        inc_out = sub.run(command, check=True, stdout=sub.PIPE, universal_newlines=True, env=os.environ.copy()).stdout
     except sub.CalledProcessError as e:
-        print("==ERROR== Incremental upload command {0} failed.\n "\
-        "Error code {1}:{2}".format(e.cmd, e.returncode, e.output))
+        logger.error(
+            "Incremental upload command {0} failed.\n\tError code {1}:{2}".format(e.cmd, e.returncode, e.output))
 
 def trigger_streaming_upload(folders, config):
     """ Open a thread pool of size N_STREAMING_THREADS
@@ -411,7 +460,7 @@ def trigger_streaming_upload(folders, config):
     pool = multiprocessing.Pool(processes=int(config["n_streaming_threads"]))
     results = []
     for folder in folders:
-        print("Adding folder {0} to pool".format(folder))
+        logger.debug("Adding folder {0} to pool".format(folder))
         results.append(pool.apply_async(_trigger_streaming_upload, args=(folder, config)))
 
     # Retrieve results from all _trigger_streaming_upload calls
@@ -424,10 +473,39 @@ def trigger_streaming_upload(folders, config):
     # Wait for all incremental upload threads
     pool.join()
 
+def sync_log(args, attempts=3, delay_time=0.1):
+    """
+    Copy the log file into the remote log folder 
+    """
+    if args.log_folder == "~":
+        return
+    for i in range(attempts):
+        try:
+            shutil.copy(os.path.join(os.environ["HOME"], args.log_name), 
+                    os.path.join(args.log_folder, args.log_name))
+            shutil.copy(os.path.join(os.environ["HOME"], args.log_dsu_name), 
+                    os.path.join(args.log_folder, args.log_dsu_name))
+            break
+        except Exception as err:
+            logger.warning(f"{i + 1} attempt failed when trying to persist the log file to remote folder {args.log_folder} due to error: {err}")
+            time.sleep(delay_time)
+            if i == (attempts - 1):
+                logger.warning(f"Failed to persist the log file to the remote folder {args.log_folder} after {attempts} attempts")
+                # Backup the log file to not be overwriten in the next cron  
+                backed_up_log = os.path.join(os.environ["HOME"], f"{args.log_name}_{int(time.time())}")
+                backed_up_dsu_log = os.path.join(os.environ["HOME"], f"{args.log_dsu_name}_{int(time.time())}")
+                shutil.copy(os.path.join(os.environ["HOME"], args.log_name), backed_up_log)
+                shutil.copy(os.path.join(os.environ["HOME"], args.log_dsu_name), backed_up_dsu_log)
+                logger.warning(f"Backed up the log file at {backed_up_log}")
+                logger.warning(f"Backed up the dx-stream-cron log file at {backed_up_dsu_log}")
+                
 def main():
     """ Main entry point """
+    logger.info("-"*10 + "START" + "-"*10)
     args = parse_args()
-    if DEBUG: print("==DEBUG== Got args, ", args)
+    if DEBUG: logger.debug("Version: v0.4.0")
+    if DEBUG: logger.debug("Starting monitor_runs at %s" % time.time())
+    if DEBUG: logger.debug("Got args %s" % args)
 
     # Make sure that we can find the incremental_upload scripts
     curr_dir = sys.path[0]
@@ -436,59 +514,60 @@ def main():
         sys.exit("Failed to locate necessary scripts for incremental upload")
 
     token = get_dx_auth_token()
-    if DEBUG: print("==DEBUG== Got token: ", token)
+    if DEBUG: logger.debug("Got token: %s" % token)
 
     run_folders = get_run_folders(args.directory)
-    if DEBUG: print("==DEBUG== Got RUN folders: ", run_folders)
+    if DEBUG: logger.debug("Got RUN folders: %s" % run_folders)
 
     streaming_config = get_streaming_config(args.config, args.project,
                                             args.applet, args.workflow,
                                             args.script, token)
 
-    if DEBUG: print("==DEBUG== Got config: ", streaming_config)
+    if DEBUG: logger.debug("Got config:\n%s" % json.dumps(streaming_config, indent=4))
 
     streaming_config = _translate_integers(streaming_config)
 
-    if DEBUG: print("==DEBUG== translated integers: ", streaming_config)
+    if DEBUG: logger.debug("Translated integers: %s" % streaming_config)
 
     streaming_config = check_config_fields(streaming_config)
 
-    if DEBUG: print("==DEBUG== Validated config: ", streaming_config)
+    if DEBUG: logger.debug("Validated config: %s" % streaming_config)
 
     (not_runs, completed_runs, ongoing_runs, stale_runs) = check_local_runs(args.directory, run_folders,
                                                                   streaming_config['run_length'],
                                                                   streaming_config['n_seq_intervals'], streaming_config.get("novaseq", False))
 
     if DEBUG:
-        print("==DEBUG== Searching for run directories in {0}:".format(args.directory))
+        logger.debug("Searching for run directories in {0}:".format(args.directory))
         if not_runs:
-            print("==DEBUG== Following folders are deemed NOT to be run directories: {0}".format(not_runs))
+            logger.debug("Following folders are deemed NOT to be run directories: {0}".format(not_runs))
         if completed_runs:
-            print("==DEBUG== Following folders are deemed to be COMPLETED runs: {0}".format(completed_runs))
+            logger.debug("Following folders are deemed to be COMPLETED runs: {0}".format(completed_runs))
         if ongoing_runs:
-            print("==DEBUG== Following folders are deemed to be ONGOING runs: {0}".format(ongoing_runs))
+            logger.debug("Following folders are deemed to be ONGOING runs: {0}".format(ongoing_runs))
         if stale_runs:
-            print("==DEBUG== Following folders are deeemed to be STALE runs "\
-            "and will not be uploaded: {0}".format(stale_runs))
+            logger.debug("Following folders are deeemed to be STALE runs and will not be uploaded: {0}".format(stale_runs))
 
     syncable_folders = completed_runs + ongoing_runs
     (synced_folders, unsynced_folders) = check_dnax_folders(syncable_folders, args.project)
-    if DEBUG: print("==DEBUG== Got synced folders: ", synced_folders)
-    if DEBUG: print("==DEBUG== Got unsynced folders: ", unsynced_folders)
+    if DEBUG: logger.debug("Got synced folders: %s" % synced_folders)
+    if DEBUG: logger.debug("Got unsynced folders: %s" % unsynced_folders)
 
     folders_to_sync = []
     if synced_folders:
-        incomplete_syncs = check_complete_sync(synced_folders, streaming_config)
+        incomplete_syncs = check_incomplete_sync(synced_folders, streaming_config)
         folders_to_sync += incomplete_syncs
-        if DEBUG: print("==DEBUG== Got incomplete folders: ", incomplete_syncs)
+        if DEBUG: logger.debug("Got incomplete folders: %s" % incomplete_syncs)
 
     # Preferentially upload partially-synced folders before unsynced ones
     folders_to_sync += unsynced_folders
     folders_to_sync = ["{0}/{1}".format(args.directory, folder) for folder in folders_to_sync]
 
-    if DEBUG: "==DEBUG== Folders to sync: {0}".format(folders_to_sync)
+    if DEBUG: logger.debug("Folders to sync: {0}".format(folders_to_sync))
 
     trigger_streaming_upload(folders_to_sync, streaming_config)
+    logger.info("-"*10 + "END" + "-"*10)
 
+    sync_log(args)
 if __name__ == "__main__":
     main()
